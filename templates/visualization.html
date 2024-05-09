@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}index{% endblock %}
+{% block content %}
+
+<div class="row" style="margin:10px">
+    <span>請選擇一個已轉換過的檔案，若未轉換過請先至轉檔頁面轉換</span>
+    <div id="FileList" class="col-6 list-group" style="height: 200px; overflow-y: auto;">
+        {% for file in files %}
+        <button type="button" class="list-group-item list-group-item-action">{{ file }}</button>
+        {% endfor %}
+    </div>
+</div>
+<div>
+    <canvas id="lineChart"></canvas>
+    <canvas id="scatterChart"></canvas>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $('#FileList').on('click', 'button', function () {
+            $('#FileList button').removeClass('active');
+            $(this).addClass('active');
+            var filename = $(this).text();
+            getChartData(filename);
+        });
+        const lineCtx = $('#lineChart');
+        var lineChart;
+        const scatterCtx = $('#scatterChart');
+        var scatterChart;
+        
+        function getChartData(filename){
+            $.ajax({
+                url: '/api/get_chart_data/' + filename,
+                type: 'get',
+                success: function (response) {
+                    if(response.success) {
+                        const labels = response.data.Fx.map((_, i) => i+1);
+                        const data = response.data;
+                        const datasets = [];
+                        const colorMap = {
+                            'Fx': 'rgb(75, 192, 192)',
+                            'Fy': 'rgb(255, 99, 132)',
+                            'Fz': 'rgb(54, 162, 235)',
+                            'Mx': 'rgb(255, 205, 86)',
+                            'My': 'rgb(153, 102, 255)',
+                            'Mz': 'rgb(201, 203, 207)',
+                            'COP(x)': 'rgb(255, 159, 64)',
+                            'COP(y)': 'rgb(75, 192, 192)',
+                        };
+                        $.each(data, function (key, value) {
+                            var dataset = {
+                                label: key,
+                                data: value,
+                                fill: false,
+                                borderColor: colorMap[key],
+                                tension: 0.1
+                            };
+                            datasets.push(dataset);
+                        });
+                        initLineChart(datasets, labels);
+                        initScaterChart(data);
+
+                    }else {
+                        alert(response.message);
+                    }
+                }
+            });
+        };
+
+        function initLineChart(datasets, labels){
+            if (lineChart) {
+                lineChart.destroy();
+            }
+            lineChart = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time (s)',
+                                color: 'red',
+                            },
+                            ticks: {
+                                callback: function(val, index) {
+                                    return Math.round((val / 1200)*1000)/1000;
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Force (N)',
+                                color: 'red',
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        };
+
+        function initScaterChart(data){
+            if (scatterChart) {
+                scatterChart.destroy();
+            }
+            scatterChart = new Chart(scatterCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'COP(x) vs COP(y)',
+                            data: data['COP(x)'].map((_, i) => ({x: data['COP(x)'][i], y: data['COP(y)'][i]})),
+                            backgroundColor: 'red',
+                            borderColor: 'red',
+                            showLine: false,
+                        },
+                    ]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'COP(x)',
+                                color: 'red',
+                            },
+                            ticks: {
+                                callback: function(val, index) {
+                                    return Math.round(val*1000)/1000;
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'COP(y)',
+                                color: 'red',
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        };
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}index{% endblock %}
+{% block content %}
+<div class="row">
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="col-3 mb-3">
+            <label for="formFileMultiple" class="form-label">上傳多個.txt文字檔</label>
+            <input class="form-control" type="file" id="" multiple accept=".txt,.csv">
+        </div>
+    </form>
+    <div class="row">
+        <div class="col-2">
+            <button id="submitBtn" class="btn btn-outline-success btn-rounded">上傳</button>
+            <button id="loadBtn" class="btn btn-outline-success btn-rounded" type="button" disabled style="display: none;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="vertical-align: baseline;"></span>
+                上傳中...
+            </button>
+        </div>
+        <div class="col-2">
+            <button id="downloadBtn" class="btn btn-outline-primary btn-rounded" style="width: auto; display: none;">下載excel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        // 上傳按鈕點擊事件
+        $('#submitBtn').click(function () {
+            var formData = new FormData();
+            var files = $('input[type=file]')[0].files;
+            if (files.length == 0) {
+                alert('請選擇檔案');
+                return;
+            }
+            $(this).hide();
+            $('#loadBtn').show();
+
+            for (var i = 0; i < files.length; i++) {
+                formData.append('file', files[i]);
+            }
+            $.ajax({
+                url: '/upload',
+                type: 'post',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    alert(response.message);
+                    var filename = response.filename;
+                    $('#submitBtn').show();
+                    $('#loadBtn').hide();
+                    $('#downloadBtn').data('filename', filename);
+                    $('#downloadBtn').show();
+                }
+            });
+        });
+
+        // 下載按鈕點擊事件
+        $('#downloadBtn').click(function () {
+            var filename = $(this).data('filename');
+            if (filename) {
+                path = '/download/' + filename;
+                window.open(path, '_blank');
+            }
+        });
+    });
+</script>
+{% endblock %}

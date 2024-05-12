@@ -12,6 +12,21 @@
 </div>
 <div>
     <canvas id="lineChart"></canvas>
+    <div class="form-group row" id="ParamsBlock" style="display: none;">
+        <p>計算Fz面積</p>
+        <div class="col-2">
+            <label>第1筆資料索引</label>
+            <input type="number" class="form-control" id="index1">
+        </div>
+        <div class="col-2">
+            <label>第2筆資料索引</label>
+            <input type="number" class="form-control" id="index2">
+        </div>
+        <div class="col-2">
+            <button class="btn btn-outline-primary btn-rounded" id="CountAreaBtn" style="width: auto;">計算</button>
+            <p id="AreaText"></p>
+        </div>
+    </div>
     <canvas id="scatterChart"></canvas>
 </div>
 
@@ -23,18 +38,48 @@
             var filename = $(this).text();
             getChartData(filename);
         });
+
+        $('#CountAreaBtn').click(function () {
+            var start = $('#index1').val();
+            var end = $('#index2').val();
+            if (start == '' || end == '') {
+                alert('請輸入正確的數字');
+                return;
+            }
+            $.ajax({
+                url: '/api/get_area',
+                type: 'get',
+                data: {
+                    filename: $('#FileList button.active').text(),
+                    start: start,
+                    end: end
+                },
+                success: function (response) {
+                    if (response.success) {
+                        $('#AreaText').text('面積為' + response.area + 'N/s');
+                    } else {
+                        alert(response.message);
+                    }
+                }
+            });
+        });
+
         const lineCtx = $('#lineChart');
         var lineChart;
         const scatterCtx = $('#scatterChart');
         var scatterChart;
-        
-        function getChartData(filename){
+
+        function getChartData(filename) {
+            var data = {
+                filename: filename
+            };
             $.ajax({
-                url: '/api/get_chart_data/' + filename,
+                url: '/api/get_chart_data',
                 type: 'get',
+                data: data,
                 success: function (response) {
-                    if(response.success) {
-                        const labels = response.data.Fx.map((_, i) => i+1);
+                    if (response.success) {
+                        const labels = response.data.Fx.map((_, i) => i + 1);
                         const data = response.data;
                         const datasets = [];
                         const colorMap = {
@@ -59,15 +104,15 @@
                         });
                         initLineChart(datasets, labels);
                         initScaterChart(data);
-
-                    }else {
+                        $('#ParamsBlock').show();
+                    } else {
                         alert(response.message);
                     }
                 }
             });
         };
 
-        function initLineChart(datasets, labels){
+        function initLineChart(datasets, labels) {
             if (lineChart) {
                 lineChart.destroy();
             }
@@ -90,8 +135,8 @@
                                 color: 'red',
                             },
                             ticks: {
-                                callback: function(val, index) {
-                                    return Math.round((val / 1200)*1000)/1000;
+                                callback: function (val, index) {
+                                    return Math.round((val / 1200) * 1000) / 1000;
                                 }
                             }
                         },
@@ -108,7 +153,7 @@
             });
         };
 
-        function initScaterChart(data){
+        function initScaterChart(data) {
             if (scatterChart) {
                 scatterChart.destroy();
             }
@@ -118,7 +163,7 @@
                     datasets: [
                         {
                             label: 'COP(x) vs COP(y)',
-                            data: data['COP(x)'].map((_, i) => ({x: data['COP(x)'][i], y: data['COP(y)'][i]})),
+                            data: data['COP(x)'].map((_, i) => ({ x: data['COP(x)'][i], y: data['COP(y)'][i] })),
                             backgroundColor: 'red',
                             borderColor: 'red',
                             showLine: false,
@@ -134,8 +179,8 @@
                                 color: 'red',
                             },
                             ticks: {
-                                callback: function(val, index) {
-                                    return Math.round(val*1000)/1000;
+                                callback: function (val, index) {
+                                    return Math.round(val * 1000) / 1000;
                                 }
                             }
                         },

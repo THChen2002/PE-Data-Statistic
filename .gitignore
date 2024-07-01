@@ -160,5 +160,6 @@ cython_debug/
 #.idea/
 
 .vscode/
-uploads/
+uploads/*
+!uploads/.gitkeep
 實驗資料/

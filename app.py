@@ -23,7 +23,7 @@ def visualization():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     files = request.files.getlist('files')
-    items = request.form.getlist('items')
+    items = request.form.get('items').split(',')
     file_names = []
     for file in files:
         if file and allowed_file(file.filename):
@@ -64,13 +64,19 @@ def count_area():
     start_index = request.args.get('start')
     end_index = request.args.get('end')
     if file_name and start_index and end_index:
-        index = [int(start_index), int(end_index)]
+        # index由小到大排序
+        index = [int(end_index)-1, int(start_index)-1]
+        index.sort()
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
         df = pd.read_excel(file_path)[:600]
         times = np.array(df.index/1200)
         Fz_values = np.array(df['Fz'])
         area = np.trapz(Fz_values[index[0]:index[1]+1], times[index[0]:index[1]+1])
-        return jsonify({'success': True, 'area': round(area, 3)})
+
+        # 把索引區間以外的資料設為None => 用於前端顯示另一個dataset
+        cleaned_data = [None] * len(Fz_values)
+        cleaned_data[index[0]:index[1] + 1] = Fz_values[index[0]:index[1] + 1].tolist()
+        return jsonify({'success': True, 'area': round(area, 3), 'data': cleaned_data})
     else:
         return jsonify({'success': False, 'message': '請選擇檔案和區間索引'})
 
@@ -92,13 +98,36 @@ def txt_to_excel(file_path, items):
     original_df = pd.read_table(file_path, sep=',', names=header)
     if 'COP' in items:
         original_df = count_COP(original_df)
+    # TODO: 這個計算只有一個值，待確認
+    if 'stability' in items:
+        original_df = count_stability_index(original_df)
     original_df.to_excel(file_path.replace('.txt', '.xlsx'), index=False)
     remove_fz_less_than_10(original_df).to_excel(file_path.replace('.txt', '_processing.xlsx'), index=False)
 
 def count_COP(df):
-    """計算COP(x)和COP(y)"""
+    """
+    計算COP
+    COP(x) = -My/Fz
+    COP(y) = Mx/Fz
+    """
     df['COP(x)'] = -(df['My'] / df['Fz'])
     df['COP(y)'] = df['Mx'] / df['Fz']
+    return df
+
+# TODO: 計算方式待確認
+# 計算平衡指數 APSI MLSI VSI DPSI
+def count_stability_index(df):
+    """
+    計算靜態平衡指數
+    APSI: sqrt(∑(0-GRFxi)**2/n)/w
+    MLSI: sqrt(∑(0-GRFyi)**2/n)/w
+    VSI: sqrt(∑(0-GRFzi)**2/n)/w
+    DPSI: sqrt([∑(0-GRFxi)**2 + ∑(0-GRFyi)**2 + ∑(w-GRFzi)**2] / n) / w
+    """
+    df['APSI'] = np.sqrt(np.sum(df['Fx']**2) / len(df)) / df['Fz'].mean()
+    df['MLSI'] = np.sqrt(np.sum(df['Fy']**2) / len(df)) / df['Fz'].mean()
+    df['VSI'] = np.sqrt(np.sum(df['Fz']**2) / len(df)) / df['Fz'].mean()
+    df['DPSI'] = np.sqrt(np.sum(df['Fx']**2 + df['Fy']**2 + (df['Fz']-df['Fz'].mean())**2) / len(df)) / df['Fz'].mean()
     return df
 
 def remove_fz_less_than_10(df):

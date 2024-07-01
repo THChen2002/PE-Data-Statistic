@@ -1,25 +1,23 @@
 {% extends "base.html" %}
 {% block title %}index{% endblock %}
 {% block content %}
-<div class="row">
+<div class="row" style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
     <form action="/upload" method="post" enctype="multipart/form-data">
-        <span>請選擇要計算的項目</span>
-        <div id="CheckList">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" value="COP">
-                <label class="form-check-label" for="inlineCheckbox1">COP</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" value="option2">
-                <label class="form-check-label" for="inlineCheckbox2">2</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="checkbox" value="option3" disabled>
-                <label class="form-check-label" for="inlineCheckbox3">3 (disabled)</label>
+        <div style="margin:5px 0px;">
+            <span style="font-weight: bold;">請選擇要計算的項目</span>
+            <div id="CheckList">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="COP" checked>
+                    <label class="form-check-label">COP</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="stability">
+                    <label class="form-check-label">APSI/MLSI/VSI/DPSI</label>
+                </div>
             </div>
         </div>
-        <div class="col-3 mb-3">
-            <label for="formFileMultiple" class="form-label">上傳多個.txt文字檔</label>
+        <div class="col-3 mb-3" style="margin: 5px 0px;">
+            <label for="formFileMultiple" class="form-label" style="font-weight: bold;">上傳多個.txt文字檔</label>
             <input class="form-control" type="file" id="" multiple accept=".txt,.csv">
         </div>
     </form>
@@ -28,8 +26,7 @@
             <button id="submitBtn" class="btn btn-outline-success btn-rounded">上傳</button>
             <button id="loadBtn" class="btn btn-outline-success btn-rounded" type="button" disabled
                 style="display: none;">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
-                    style="vertical-align: baseline;"></span>
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="vertical-align: baseline;"></span>
                 上傳中...
             </button>
         </div>
@@ -38,59 +35,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
-<script>
-    $(document).ready(function () {
-        // 上傳按鈕點擊事件
-        $('#submitBtn').click(function () {
-            var formData = new FormData();
-            var files = $('input[type=file]')[0].files;
-            if (files.length == 0) {
-                alert('請選擇檔案');
-                return;
-            }
-            $(this).hide();
-            $('#loadBtn').show();
-            $('#downloadBtn').hide();
-
-            for (var i = 0; i < files.length; i++) {
-                formData.append('files', files[i]);
-            }
-            items = get_checked_items();
-            formData.append('items', items);
-            $.ajax({
-                url: '/upload',
-                type: 'post',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    alert(response.message);
-                    var filename = response.filename;
-                    $('#submitBtn').show();
-                    $('#loadBtn').hide();
-                    $('#downloadBtn').data('filename', filename);
-                    $('#downloadBtn').show();
-                }
-            });
-        });
-
-        // 下載按鈕點擊事件
-        $('#downloadBtn').click(function () {
-            var filename = $(this).data('filename');
-            if (filename) {
-                path = '/download/' + filename;
-                window.open(path, '_blank');
-            }
-        });
-
-        function get_checked_items(){
-            var checked_items = [];
-            $('#CheckList input:checked').each(function(){
-                checked_items.push($(this).val());
-            });
-            return checked_items;
-        };
-    });
-</script>
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/index.js') }}"></script>
 {% endblock %}

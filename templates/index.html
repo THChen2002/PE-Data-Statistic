@@ -4,7 +4,7 @@
 <div class="row" style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
     <form action="/upload" method="post" enctype="multipart/form-data">
         <div style="margin:5px 0px;">
-            <span style="font-weight: bold;">請選擇要計算的項目</span>
+            <span><b>請選擇要計算的項目</b></span>
             <div id="CheckList">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="checkbox" value="COP" checked>
@@ -16,9 +16,13 @@
                 </div>
             </div>
         </div>
+        <div>
+            <label for="weight" class="form-label"><b>請輸入受試者體重(kg) <span style="color:red">若上傳多個檔案，皆會以輸入的體重做計算</span></b></label>
+            <input class="form-control" type="number" min="1" id="weight">
+        </div>
         <div class="col-3 mb-3" style="margin: 5px 0px;">
-            <label for="formFileMultiple" class="form-label" style="font-weight: bold;">上傳多個.txt文字檔</label>
-            <input class="form-control" type="file" id="" multiple accept=".txt,.csv">
+            <label for="formFileMultiple" class="form-label"><b>上傳多個.txt文字檔</b></label>
+            <input class="form-control" type="file" multiple accept=".txt,.csv">
         </div>
     </form>
     <div class="row">

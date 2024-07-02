@@ -36,12 +36,21 @@ $(document).ready(function () {
                     $paramsBlock.find('.area-text').text('面積為' + response.area + 'N/s');
                     // 更新圖表
                     lineChart.data.datasets.push({
-                        label: 'Area_' + datasetId,
+                        label: 'Stage_' + datasetId,
                         id: datasetId,
                         data: response.data,
                         fill: true,
                         backgroundColor: 'rgba(255, 99, 132, 0.3)'
                     });
+                    // 如果id是datasetId，則不顯示tooltip
+                    lineChart.options.plugins.tooltip.callbacks = {
+                        label: function (context) {
+                            if (context.dataset.id === datasetId) {
+                                return `${context.dataset.label}: ${response.area}`;
+                            }
+                            return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
+                        }
+                    }
                     lineChart.update();
                 } else {
                     alert(response.message);
@@ -79,13 +88,13 @@ $(document).ready(function () {
             data: data,
             success: function (response) {
                 if (response.success) {
-                    const labels = response.data.Fx.map((_, i) => i + 1);
+                    const labels = response.data['Fx(N)'].map((_, i) => i + 1);
                     const data = response.data;
                     const datasets = [];
                     const colorMap = {
-                        'Fx': 'rgb(75, 192, 192)',
-                        'Fy': 'rgb(255, 99, 132)',
-                        'Fz': 'rgb(54, 162, 235)',
+                        'Fx(N)': 'rgb(75, 192, 192)',
+                        'Fy(N)': 'rgb(255, 99, 132)',
+                        'Fz(N)': 'rgb(54, 162, 235)',
                         'Mx': 'rgb(255, 205, 86)',
                         'My': 'rgb(153, 102, 255)',
                         'Mz': 'rgb(201, 203, 207)',
@@ -103,15 +112,18 @@ $(document).ready(function () {
                         datasets.push(dataset);
                     });
                     initLineChart(datasets, labels);
-                    initScaterChart(data);
+                    initScaterChart(data, response.ellipse);
+                    $('#EllipseText').text('橢圓面積：' + response.ellipse.area);
+                    $('#EllipseText').parent().show();
                     $('.chart-block').show();
+                    $('#SlopeText').text('Fz(N) 10N => max斜率：' + response.slope);
                     initParamsBlock();
                 } else {
                     alert(response.message);
                 }
             },
-            error: function (response) {
-                alert('發生錯誤');
+            error: function (error) {
+                alert('發生錯誤，請洽系統管理員');
             }
         });
     };
@@ -152,12 +164,21 @@ $(document).ready(function () {
                         },
                         beginAtZero: true
                     }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
+                            }
+                        }
+                    }
                 }
             }
         });
     };
 
-    function initScaterChart(data) {
+    function initScaterChart(data, ellipse) {
         if (scatterChart) {
             scatterChart.destroy();
         }
@@ -196,6 +217,21 @@ $(document).ready(function () {
                         },
                         beginAtZero: true
                     }
+                },
+                plugins: {
+                    annotation: {
+                        annotations: {
+                            ellipse1: {
+                                type: 'ellipse',
+                                xMin: ellipse.xMin,
+                                xMax: ellipse.xMax,
+                                yMin: ellipse.yMin,
+                                yMax: ellipse.yMax,
+                                rotation: ellipse.rotation,   
+                                backgroundColor: 'rgba(255, 99, 132, 0.25)'
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -212,9 +248,9 @@ $(document).ready(function () {
     // 新增ParamsBlock區塊(用display:none的當模板，複製後再顯示)
     function addParamsBlock() {
         var $newBlock = $('.params-block').first().clone();
-        $newBlock.find('input').val('');
-        $newBlock.find('.area-text').text('');
-        $newBlock.data('dataset-id', getNewDatasetId());
+        var newDatasetId = getNewDatasetId();
+        $newBlock.find('.stage-title').text('Stage ' + newDatasetId);
+        $newBlock.data('dataset-id', newDatasetId);
         $newBlock.show();
         $newBlock.insertBefore($('#AddBlockBtn'));
     };

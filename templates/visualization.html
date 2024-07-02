@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% block styles %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/visualization.css') }}">
+{% endblock %}
 {% block title %}index{% endblock %}
 {% block content %}
 
@@ -15,20 +18,23 @@
                 {% endfor %}
             </div>
         </div>
-        <div class="col-12 chart-block" style="display: none; background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
+        <div class="col-12 chart-block" style="display: none;">
             <canvas id="lineChart"></canvas>
         </div>
         <div class="col-12 row" id="ParamsBlocks" style="display: none;">
-            <div class="col-12 params-block" data-dataset-id="0" style="display: none; background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
+            <div style="background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
+                <span id="SlopeText"></span>
+            </div>
+            <div class="col-12 params-block" data-dataset-id="0" style="display: none;">
                 <div class="form-group row">
-                    <p style="font-weight: bold;">計算Fz面積(衝量)</p>
+                    <p style="font-weight: bold;"><span class="badge bg-success stage-title"></span> 計算Fz面積(衝量)</p>
                     <div class="col-3">
                         <label>第1筆資料索引</label>
-                        <input type="number" min="1" class="form-control" id="index1">
+                        <input type="number" min="1" class="form-control">
                     </div>
                     <div class="col-3">
                         <label>第2筆資料索引</label>
-                        <input type="number" min="1" class="form-control" id="index2">
+                        <input type="number" min="1" class="form-control">
                     </div>
                     <div class="col-2" style="display: inline-grid;">
                         <button class="btn btn-outline-primary btn-rounded count-area-btn" style="width: auto;">計算</button>
@@ -48,9 +54,12 @@
             </div>
             <button class="btn btn-outline-success btn-rounded" id="AddBlockBtn">新增區塊</button>
         </div>
-        <div class="col-12 chart-block" style="display: none; background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
+        <div class="col-12 chart-block" style="display: none;">
             <canvas id="scatterChart"></canvas>
-        </div>  
+        </div>
+        <div style="display: none; background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
+            <span id="EllipseText"></span>
+        </div>
     </div>
 </div>
 {% endblock %}

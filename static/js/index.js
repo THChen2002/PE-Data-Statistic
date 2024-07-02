@@ -14,9 +14,12 @@ $(document).ready(function () {
         for (var i = 0; i < files.length; i++) {
             formData.append('files', files[i]);
         }
-        items = get_checked_items();
+        // 勾選的項目
+        var items = get_checked_items();
         formData.append('items', items);
-        // formData.append('items', JSON.stringify(items));
+        // 受試者體重
+        var weight = $('#weight').val();
+        formData.append('weight', weight);
         $.ajax({
             url: '/upload',
             type: 'post',

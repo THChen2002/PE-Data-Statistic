@@ -1,7 +1,12 @@
 .chart-block, .params-block {
-    /* display: none; */
+    display: none;
     background-color: #efefef;
     padding: 10px;
     margin: 10px 0px;
     border-radius: 10px;
+}
+
+/* class同時是active就顯示 */
+.params-block.active {
+    display: block;
 }

@@ -1,57 +1,57 @@
 $(document).ready(function () {
+    const lineCtx = $('#lineChart');
+    let lineChart;
+    const scatterCtx = $('#scatterChart');
+    let scatterChart;
+    let chartData = {};
+    let loading_rate = {};
+
     // 檔案清單點擊事件
-    $('#FileList').on('click', 'button', function () {
-        $('#FileList button').removeClass('active');
+    $('#fileList').on('click', 'button', function () {
+        $('#fileList button').removeClass('active');
         $(this).addClass('active');
-        var filename = $(this).text();
-        getChartData(filename);
+        let filename = $(this).text();
+        let unit = $('input[name=unit]:checked').val().toUpperCase();
+        getChartData(filename, 'line', unit);
+        getChartData(filename, 'scatter', unit);
+    });
+
+    // 單位轉換事件
+    $('input[name=unit]').change(function () {
+        let unit = $(this).val().toUpperCase();
+        let datasets = chartData[unit];
+        lineChart.data.datasets = datasets;
+        lineChart.options.scales.y.title.text = `Force (${unit})`;
+        lineChart.update();
+        initParamsBlock();
+        show_loading_rate_info(unit);
     });
 
     /* 計算面積按鈕點擊事件
        這邊是用動態綁定事件的方式，因為新增區塊按鈕是動態新增的，所以要用document方式綁定事件
     */
-    $(document).on('click', '.count-area-btn', function () {
-        var $paramsBlock = $(this).closest('.params-block');
-        var $inputs = $paramsBlock.find('input');
-        var start = $inputs.eq(0).val();
-        var end = $inputs.eq(1).val();
-        if (start == '' || end == '') {
+    $(document).on('click', '.count-impulse-btn', function () {
+        let $paramsBlock = $(this).closest('.params-block');
+        let $inputs = $paramsBlock.find('input');
+        let start = $inputs.eq(0).val();
+        let end = $inputs.eq(1).val();
+        let unit = $('input[name=unit]:checked').val().toUpperCase();
+        if (!(start && end)) {
             alert('請輸入正確的數字');
             return;
         }
         $.ajax({
-            url: '/api/get_area',
+            url: '/api/get_impulse',
             type: 'get',
             data: {
-                filename: $('#FileList button.active').text(),
+                filename: $('#fileList button.active').text(),
                 start: start,
-                end: end
+                end: end,
+                unit: unit
             },
             success: function (response) {
                 if (response.success) {
-                    var datasetId = $paramsBlock.data('dataset-id');
-                    // 先刪除舊的 dataset
-                    deleteDataset(datasetId);
-
-                    $paramsBlock.find('.area-text').text('面積為' + response.area + 'N/s');
-                    // 更新圖表
-                    lineChart.data.datasets.push({
-                        label: 'Stage_' + datasetId,
-                        id: datasetId,
-                        data: response.data,
-                        fill: true,
-                        backgroundColor: 'rgba(255, 99, 132, 0.3)'
-                    });
-                    // 如果id是datasetId，則不顯示tooltip
-                    lineChart.options.plugins.tooltip.callbacks = {
-                        label: function (context) {
-                            if (context.dataset.id === datasetId) {
-                                return `${context.dataset.label}: ${response.area}`;
-                            }
-                            return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
-                        }
-                    }
-                    lineChart.update();
+                    show_impulse_info($paramsBlock, unit, response);
                 } else {
                     alert(response.message);
                 }
@@ -61,26 +61,23 @@ $(document).ready(function () {
 
     // 刪除區塊按鈕點擊事件
     $(document).on('click', '.delete-btn', function () {
-        var $paramsBlock = $(this).closest('.params-block');
-        var datasetId = $paramsBlock.data('dataset-id');
+        let $paramsBlock = $(this).closest('.params-block');
+        let datasetId = $paramsBlock.data('dataset-id');
         $paramsBlock.remove();
         // 移除圖表資料
         deleteDataset(datasetId);
     });
 
     // 新增區塊按鈕點擊事件
-    $('#AddBlockBtn').click(function () {
+    $('#addBlockBtn').click(function () {
         addParamsBlock();
     });
 
-    const lineCtx = $('#lineChart');
-    var lineChart;
-    const scatterCtx = $('#scatterChart');
-    var scatterChart;
-
-    function getChartData(filename) {
-        var data = {
-            filename: filename
+    // 取得圖表資料
+    function getChartData(filename, type, unit) {
+        let data = {
+            filename: filename,
+            type: type
         };
         $.ajax({
             url: '/api/get_chart_data',
@@ -88,38 +85,48 @@ $(document).ready(function () {
             data: data,
             success: function (response) {
                 if (response.success) {
-                    const labels = response.data['Fx(N)'].map((_, i) => i + 1);
-                    const data = response.data;
-                    const datasets = [];
-                    const colorMap = {
-                        'Fx(N)': 'rgb(75, 192, 192)',
-                        'Fy(N)': 'rgb(255, 99, 132)',
-                        'Fz(N)': 'rgb(54, 162, 235)',
-                        'Mx': 'rgb(255, 205, 86)',
-                        'My': 'rgb(153, 102, 255)',
-                        'Mz': 'rgb(201, 203, 207)',
-                        'COP(x)': 'rgb(255, 159, 64)',
-                        'COP(y)': 'rgb(75, 192, 192)',
-                    };
-                    $.each(data, function (key, value) {
-                        var dataset = {
-                            label: key,
-                            data: value,
-                            fill: false,
-                            borderColor: colorMap[key],
-                            tension: 0.1
+                    const result = response.result;
+                    const data = result.data;
+                    if(type === 'line'){
+                        // x軸的標籤(time)
+                        const labels = data[Object.keys(data)[0]].map((_, i) => i + 1);
+                        const datasets = [];
+                        const colorMap = {
+                            'Fx(N)': 'rgb(255, 159, 64)',
+                            'Fy(N)': 'rgb(255, 99, 132)',
+                            'Fz(N)': 'rgb(54, 162, 235)',
+                            'Fx(BW)': 'rgb(255, 159, 64)',
+                            'Fy(BW)': 'rgb(255, 99, 132)',
+                            'Fz(BW)': 'rgb(54, 162, 235)'
                         };
-                        datasets.push(dataset);
-                    });
-                    initLineChart(datasets, labels);
-                    initScaterChart(data, response.ellipse);
-                    $('#EllipseText').text('橢圓面積：' + response.ellipse.area);
-                    $('#EllipseText').parent().show();
+                        $.each(data, function (key, value) {
+                            if (key in colorMap){
+                                let dataset = {
+                                    label: key,
+                                    data: value,
+                                    fill: false,
+                                    borderColor: colorMap[key],
+                                    tension: 0.1
+                                };
+                                datasets.push(dataset);
+                            }
+                        });
+
+                        // 將資料分成N和BW兩個部分存入全域變數
+                        chartData = {
+                            'N': datasets.filter(dataset => ['Fx(N)', 'Fy(N)', 'Fz(N)'].includes(dataset.label)),
+                            'BW': datasets.filter(dataset => ['Fx(BW)', 'Fy(BW)', 'Fz(BW)'].includes(dataset.label))
+                        }
+                        loading_rate = result.loading_rate;
+
+                        initLineChart(chartData[unit], labels);
+                        show_loading_rate_info(unit);
+                        initParamsBlock();
+                    } else if(type === 'scatter'){
+                        initScatterChart(data, result.ellipse);
+                        show_stability_info(result.stability_index, result.ellipse.area);
+                    }
                     $('.chart-block').show();
-                    $('#SlopeText').text('Fz(N) 10N => max斜率：' + response.slope);
-                    initParamsBlock();
-                } else {
-                    alert(response.message);
                 }
             },
             error: function (error) {
@@ -128,6 +135,7 @@ $(document).ready(function () {
         });
     };
 
+    // 初始化LineChart
     function initLineChart(datasets, labels) {
         if (lineChart) {
             lineChart.destroy();
@@ -152,7 +160,7 @@ $(document).ready(function () {
                         },
                         ticks: {
                             callback: function (val, index) {
-                                return Math.round((val / 1200) * 1000) / 1000;
+                                return index_to_second(val);
                             }
                         }
                     },
@@ -168,6 +176,9 @@ $(document).ready(function () {
                 plugins: {
                     tooltip: {
                         callbacks: {
+                            title: function (context) {
+                                return `${context[0].dataIndex + 1}\nTime: ${index_to_second(context[0].dataIndex)}(s)`;
+                            },
                             label: function (context) {
                                 return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
                             }
@@ -178,7 +189,8 @@ $(document).ready(function () {
         });
     };
 
-    function initScaterChart(data, ellipse) {
+    // 初始化ScatterChart
+    function initScatterChart(data, ellipse) {
         if (scatterChart) {
             scatterChart.destroy();
         }
@@ -188,7 +200,7 @@ $(document).ready(function () {
                 datasets: [
                     {
                         label: 'COP(x) vs COP(y)',
-                        data: data['COP(x)'].map((_, i) => ({ x: data['COP(x)'][i], y: data['COP(y)'][i] })),
+                        data: data['COP(x)(m)'].map((_, i) => ({ x: data['COP(x)(m)'][i], y: data['COP(y)(m)'][i] })),
                         backgroundColor: 'red',
                         borderColor: 'red',
                         showLine: false,
@@ -200,7 +212,7 @@ $(document).ready(function () {
                     x: {
                         title: {
                             display: true,
-                            text: 'COP(x)',
+                            text: 'COP(x)(m)',
                             color: 'red',
                         },
                         ticks: {
@@ -212,7 +224,7 @@ $(document).ready(function () {
                     y: {
                         title: {
                             display: true,
-                            text: 'COP(y)',
+                            text: 'COP(y)(m)',
                             color: 'red',
                         },
                         beginAtZero: true
@@ -236,32 +248,79 @@ $(document).ready(function () {
             }
         });
     };
+
+    // 將index轉換成秒數(1200筆=1秒)
+    function index_to_second(val){
+        return Math.round((val / 1200) * 1000) / 1000;
+    }
     
     // 初始化ParamsBlock區塊
     function initParamsBlock() {
         // 只留下第一個區塊
-        $('#ParamsBlocks').find('.params-block').not(':first').remove();
+        $('.params-block').not(':first').remove();
         addParamsBlock();
-        $('#ParamsBlocks').show();
-    };
+        $('#addBlockBtn').show();
+    }
     
     // 新增ParamsBlock區塊(用display:none的當模板，複製後再顯示)
     function addParamsBlock() {
-        var $newBlock = $('.params-block').first().clone();
-        var newDatasetId = getNewDatasetId();
-        $newBlock.find('.stage-title').text('Stage ' + newDatasetId);
+        let $newBlock = $('.params-block').first().clone();
+        let newDatasetId = getNewDatasetId();
+        $newBlock.find('.phase-title').text('Phase ' + newDatasetId);
         $newBlock.data('dataset-id', newDatasetId);
+        $newBlock.addClass('active');
         $newBlock.show();
-        $newBlock.insertBefore($('#AddBlockBtn'));
-    };
+        $newBlock.insertBefore($('#addBlockBtn'));
+    }
 
+    // 取得新的dataset id(目前最後一個的dataset id + 1)
     function getNewDatasetId() {
-        var currentIds = $('.params-block').last().data('dataset-id');
+        let currentIds = $('.params-block').last().data('dataset-id');
         return currentIds + 1;
     }
 
+    // 刪除linechart的dataset
     function deleteDataset(datasetId) {
-        lineChart.data.datasets = lineChart.data.datasets.filter(dataset => dataset.id != datasetId);
+        lineChart.data.datasets = lineChart.data.datasets.filter(dataset => dataset.id !== datasetId);
         lineChart.update();
+    }
+
+    function show_impulse_info($paramsBlock, unit, response){
+        let datasetId = $paramsBlock.data('dataset-id');
+        // 先刪除舊的 dataset
+        deleteDataset(datasetId);
+
+        $paramsBlock.find('.impulse-text').text(`衝量: ${response.area} ${unit}/s`);
+        // 更新圖表
+        lineChart.data.datasets.push({
+            label: 'Phase_' + datasetId,
+            id: datasetId,
+            data: response.data,
+            fill: true,
+            backgroundColor: 'rgba(255, 99, 132, 0.3)'
+        });
+        // 如果id是datasetId，則不顯示tooltip
+        lineChart.options.plugins.tooltip.callbacks.label = function (context) {
+            if (context.dataset.id === datasetId) {
+                return `${context.dataset.label}: ${response.area}`;
+            }
+            return `${context.dataset.label}: ${context.raw.toFixed(2)}`;
+        };
+        lineChart.update();
+    }
+
+    // 顯示loading rate資訊
+    function show_loading_rate_info(unit){
+        $.each(loading_rate[unit], function(key, value){
+            $(`#${key}`).text(`${value.value}(${value.unit})`);
+        });
+    }
+
+    // 顯示穩定指數資訊
+    function show_stability_info(info, area){
+        $.each(info, function(key, value){
+            $(`#${key}`).text(value);
+        });
+        $('#COP-area').text(area);
     }
 });

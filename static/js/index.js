@@ -1,24 +1,30 @@
 $(document).ready(function () {
     // 上傳按鈕點擊事件
     $('#submitBtn').click(function () {
-        var formData = new FormData();
-        var files = $('input[type=file]')[0].files;
-        if (files.length == 0) {
+        // 受試者體重
+        let weight = $('#weight').val();
+        // 上傳的檔案
+        let files = $('input[type=file]')[0].files;
+        // 勾選的項目
+        let items = get_checked_items();
+        if(!weight){
+            alert('請輸入受試者體重');
+            return;
+        }
+        if (files.length === 0) {
             alert('請選擇檔案');
             return;
         }
+        let formData = new FormData();
+        
         $(this).hide();
         $('#loadBtn').show();
         $('#downloadBtn').hide();
 
-        for (var i = 0; i < files.length; i++) {
+        for (let i = 0; i < files.length; i++) {
             formData.append('files', files[i]);
         }
-        // 勾選的項目
-        var items = get_checked_items();
         formData.append('items', items);
-        // 受試者體重
-        var weight = $('#weight').val();
         formData.append('weight', weight);
         $.ajax({
             url: '/upload',
@@ -28,7 +34,7 @@ $(document).ready(function () {
             processData: false,
             success: function (response) {
                 alert(response.message);
-                var filename = response.filename;
+                let filename = response.filename;
                 $('#submitBtn').show();
                 $('#loadBtn').hide();
                 $('#downloadBtn').data('filename', filename);
@@ -44,7 +50,7 @@ $(document).ready(function () {
 
     // 下載按鈕點擊事件
     $('#downloadBtn').click(function () {
-        var filename = $(this).data('filename');
+        let filename = $(this).data('filename');
         if (filename) {
             path = '/download/' + filename;
             window.open(path, '_blank');
@@ -52,10 +58,10 @@ $(document).ready(function () {
     });
 
     function get_checked_items(){
-        var checked_items = [];
+        let checked_items = [];
         $('#CheckList input:checked').each(function(){
             checked_items.push($(this).val());
         });
         return checked_items;
-    };
+    }
 });

@@ -53,26 +53,35 @@ def download_file(name):
 @app.route('/api/get_chart_data', methods=['GET'])
 def get_chart_data():
     file_name = request.args.get('filename')
+    chart_type = request.args.get('type')
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
     df = pd.read_excel(file_path)[:600]
     # 把每個column的資料轉成list
     data = {col: df[col].tolist() for col in df.columns}
-    ellipse_data = get_ellipse_data(df)
-    # 計算Fz(N)從10N到max的斜率
-    Fz_values = np.array(df['Fz(N)'])
-    max_index = np.argmax(Fz_values)
-    max_value = Fz_values[max_index]
-    slope = (max_value - Fz_values[0]) / (max_index*(1/1200))
-    slope = round(slope, 2)
+    result = {}
+    if chart_type == 'line':
+        result['data'] = data
+        result['loading_rate'] = {
+            'N': count_loading_rate(np.array(df['Fz(N)']), 'N'),
+            'BW': count_loading_rate(np.array(df['Fz(BW)']), 'BW')
+        }
+    elif chart_type == 'scatter':
+        ellipse_data = get_ellipse_data(df)
+        result['data'] = {col: data[col] for col in ['COP(x)(m)', 'COP(y)(m)']}
+        result['stability_index'] = count_stability_index(df)
+        result['ellipse'] = ellipse_data
+    else:
+        result['data'] = data
 
-    return jsonify({'success': True, 'data': data, 'slope': slope, 'ellipse': ellipse_data})
+    return jsonify({'success': True, 'result': result})
 
-@app.route('/api/get_area', methods=['GET'])
-def count_area():
-    """計算面積"""
+@app.route('/api/get_impulse', methods=['GET'])
+def count_impulse():
+    """計算Fz區間面積(衝量)"""
     file_name = request.args.get('filename')
     start_index = request.args.get('start')
     end_index = request.args.get('end')
+    unit = request.args.get('unit')
     if file_name and start_index and end_index:
         # index由小到大排序
         index = [int(end_index)-1, int(start_index)-1]
@@ -80,7 +89,7 @@ def count_area():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
         df = pd.read_excel(file_path)[:600]
         times = np.array(df.index/1200)
-        Fz_values = np.array(df['Fz(N)'])
+        Fz_values = np.array(df['Fz(N)']) if unit == 'N' else np.array(df['Fz(BW)'])
         area = np.trapz(Fz_values[index[0]:index[1]+1], times[index[0]:index[1]+1])
 
         # 把索引區間以外的資料設為None => 用於前端顯示另一個dataset
@@ -104,7 +113,7 @@ def get_file_list():
 
 def txt_to_excel(file_path, items, weight):
     """將txt檔轉成excel檔，根據items選擇要計算的資料"""
-    header=['Fx(N)','Fy(N)','Fz(N)','Mx','My','Mz']
+    header=['Fx(N)','Fy(N)','Fz(N)','Mx(N-m)','My(N-m)','Mz(N-m)']
     original_df = pd.read_table(file_path, sep=',', names=header)
     # 如果有輸入體重，將F/(N*weight)
     if weight:
@@ -115,9 +124,6 @@ def txt_to_excel(file_path, items, weight):
         original_df['Fz(BW)'] = original_df['Fz(N)'] / (N * weight)
     if 'COP' in items:
         original_df = count_COP(original_df)
-    # TODO: 這個計算只有一個值，待確認
-    if 'stability' in items:
-        original_df = count_stability_index(original_df)
     original_df.to_excel(file_path.replace('.txt', '.xlsx'), index=False)
     remove_fz_less_than_10(original_df).to_excel(file_path.replace('.txt', '_processing.xlsx'), index=False)
 
@@ -127,28 +133,65 @@ def count_COP(df):
     COP(x) = -My/Fz
     COP(y) = Mx/Fz
     """
-    df['COP(x)'] = -(df['My'] / df['Fz(N)'])
-    df['COP(y)'] = df['Mx'] / df['Fz(N)']
+    df['COP(x)(m)'] = -(df['My(N-m)'] / df['Fz(N)'])
+    df['COP(y)(m)'] = df['Mx(N-m)'] / df['Fz(N)']
     return df
 
+def count_loading_rate(Fz_values, unit):
+    """計算Fz從10N到max的斜率"""
+    max_index = np.argmax(Fz_values)
+    max_value = Fz_values[max_index]
+    rate = (max_value - Fz_values[0]) / (max_index*(1/1200))
+    result = {
+        'max': {
+            'value': round(max_value, 3),
+            'unit': unit
+        },
+        'time': {
+            'value': round(max_index*(1/1200), 3),
+            'unit': 's'
+        },
+        'rate': {
+            'value': round(rate, 3),
+            'unit': f'{unit}/s'
+        }
+    }
+    return result
+
 # TODO: 計算方式待確認
-# 計算平衡指數 APSI MLSI VSI DPSI
 def count_stability_index(df):
     """
-    計算靜態平衡指數
+    計算平衡指數
+    COP VEL-total(mm/s): sqrt(∑(COPx(n+1) - COPx(n))**2 + ∑(COPy(n+1) - COPy(n))**2)/n
+    COP VEL-AP(mm/s): sqrt(∑(COPx)**2)/n
+    COP VEL-ML(mm/s): sqrt(∑(COPy)**2)/n
+    COP AMP-AP(mm): max(COPx) - min(COPx)
+    COP AMP-ML(mm): max(COPy) - min(COPy)
     APSI: sqrt(∑(0-GRFxi)**2/n)/w
     MLSI: sqrt(∑(0-GRFyi)**2/n)/w
     VSI: sqrt(∑(0-GRFzi)**2/n)/w
     DPSI: sqrt([∑(0-GRFxi)**2 + ∑(0-GRFyi)**2 + ∑(w-GRFzi)**2] / n) / w
     """
-    df['APSI'] = np.sqrt(np.sum(df['Fx(N)']**2) / len(df)) / df['Fz(N)'].mean()
-    df['MLSI'] = np.sqrt(np.sum(df['Fy(N)']**2) / len(df)) / df['Fz(N)'].mean()
-    df['VSI'] = np.sqrt(np.sum(df['Fz(N)']**2) / len(df)) / df['Fz(N)'].mean()
-    df['DPSI'] = np.sqrt(np.sum(df['Fx(N)']**2 + df['Fy']**2 + (df['Fz(N)']-df['Fz(N)'].mean())**2) / len(df)) / df['Fz(N)'].mean()
-    return df
+    N = 9.8
+    result = {
+        'VEL-total': round(np.sqrt(np.sum((df['COP(x)(m)'].diff())**2 + (df['COP(y)(m)'].diff())**2) / (len(df) / 1200)) * 1000, 2),
+        'VEL-AP': round(np.sqrt(np.sum(df['COP(x)(m)'].diff()**2) / (len(df) / 1200)) * 1000, 2),
+        'VEL-ML': round(np.sqrt(np.sum(df['COP(y)(m)'].diff()**2) / (len(df) / 1200)) * 1000, 2),
+        'AMP-AP': round((max(df['COP(x)(m)']) - min(df['COP(x)(m)'])) * 1000, 2),
+        'AMP-ML': round((max(df['COP(y)(m)']) - min(df['COP(y)(m)'])) * 1000, 2),
+        'APSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2) / len(df)) / N, 2),
+        'MLSI': round(np.sqrt(np.sum((0 - df['Fy(N)'])**2) / len(df)) / N, 2),
+        'VSI': round(np.sqrt(np.sum((0 - df['Fz(N)'])**2) / len(df)) / N, 2),
+        'DPSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2 + (0 - df['Fy(N)'])**2 + (N - df['Fz(N)'])**2) / len(df)) / N, 2)
+    }
+    return result
 
+# TODO: 去尾資料方式待確認
 def remove_fz_less_than_10(df):
-    """移除前後Fz小於10的資料"""
+    """移除頭尾資料
+    頭: 第一筆Fz大於10N
+    尾: 等於體重
+    """
     fz_more_than_10_index = df[df['Fz(N)'] >= 10]
     # 找出第一筆Fz大於10的index
     start = fz_more_than_10_index.index[0]
@@ -169,8 +212,8 @@ def get_ellipse_data(df):
         return data[(z_scores < threshold).all(axis=1)]
 
     # 提取 COP(x) 和 COP(y) 列
-    cop_x = df['COP(x)'].values
-    cop_y = df['COP(y)'].values
+    cop_x = df['COP(x)(m)'].values
+    cop_y = df['COP(y)(m)'].values
 
     # 確保數據範圍正常
     cop_x = cop_x[np.isfinite(cop_x)]
@@ -206,7 +249,8 @@ def get_ellipse_data(df):
         'yMin': np.min(filtered_data_points[:, 1]),
         'yMax': np.max(filtered_data_points[:, 1]),
         'rotation': angle_degrees,
-        'area': area
+        # m^2轉mm^2
+        'area': round(area * pow(1000, 2), 2)
     }
     return ellipse_params
 

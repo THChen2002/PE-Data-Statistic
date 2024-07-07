@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}index{% endblock %}
+{% block title %}轉檔{% endblock %}
 {% block content %}
 <div class="row" style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
     <form action="/upload" method="post" enctype="multipart/form-data">
@@ -11,27 +11,29 @@
                     <label class="form-check-label">COP</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" value="stability">
-                    <label class="form-check-label">APSI/MLSI/VSI/DPSI</label>
+                    <input class="form-check-input" type="checkbox" value="" disabled>
+                    <label class="form-check-label">other</label>
                 </div>
             </div>
         </div>
         <div>
-            <label for="weight" class="form-label"><b>請輸入受試者體重(kg) <span style="color:red">若上傳多個檔案，皆會以輸入的體重做計算</span></b></label>
-            <input class="form-control" type="number" min="1" id="weight">
+            <label for="weight" class="form-label">
+                <b>請輸入受試者體重(kg)</b>
+                <i class="bi bi-exclamation-circle" data-bs-toggle="tooltip" data-bs-html="true" title="若上傳多個檔案<br>皆會以輸入的體重做計算" data-bs-placement="right" data-bs-custom-class="custom-tooltip" style="color:red; margin-left: 5px;font-size: 1.2rem;"></i>
+            </label>
+            <input class="form-control" type="number" min="1" id="weight" style="width:25%">
         </div>
         <div class="col-3 mb-3" style="margin: 5px 0px;">
-            <label for="formFileMultiple" class="form-label"><b>上傳多個.txt文字檔</b></label>
+            <label for="formFileMultiple" class="form-label"><b>上傳多個.txt文字檔</b><i class="bi bi-filetype-txt" style="margin-left: 5px;"></i></label>
             <input class="form-control" type="file" multiple accept=".txt,.csv">
         </div>
     </form>
     <div class="row">
         <div class="col-2">
             <button id="submitBtn" class="btn btn-outline-success btn-rounded">上傳</button>
-            <button id="loadBtn" class="btn btn-outline-success btn-rounded" type="button" disabled
-                style="display: none;">
+            <button id="loadBtn" class="btn btn-outline-success btn-rounded" type="button" style="display: none;" disabled>
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="vertical-align: baseline;"></span>
-                上傳中...
+                轉檔中...
             </button>
         </div>
         <div class="col-2">

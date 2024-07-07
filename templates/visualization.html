@@ -2,63 +2,97 @@
 {% block styles %}
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/visualization.css') }}">
 {% endblock %}
-{% block title %}index{% endblock %}
+{% block title %}視覺化{% endblock %}
 {% block content %}
 
-<div class="row" >
-    <div class="col-12 row">
-        <div class="col-12 row" style="background-color: #efefef; padding: 10px; margin: 10px 0px; border-radius: 10px;">
-            <div class="col-5">
-                <span style="font-weight: bold;">請選擇一個已轉換過的檔案</span><br>
-                <span style="font-weight: bold;color: red;">若未轉換過請先至<a href="/">轉檔</a>頁面轉換</span>
-            </div>
-            <div id="FileList" class="col-7 list-group" style="height: 200px; overflow-y: auto; padding: 5px 0px;">
-                {% for file in files %}
-                <button type="button" class="list-group-item list-group-item-action">{{ file }}</button>
-                {% endfor %}
-            </div>
-        </div>
-        <div class="col-12 chart-block" style="display: none;">
-            <canvas id="lineChart"></canvas>
-        </div>
-        <div class="col-12 row" id="ParamsBlocks" style="display: none;">
-            <div style="background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
-                <span id="SlopeText"></span>
-            </div>
-            <div class="col-12 params-block" data-dataset-id="0" style="display: none;">
-                <div class="form-group row">
-                    <p style="font-weight: bold;"><span class="badge bg-success stage-title"></span> 計算Fz面積(衝量)</p>
-                    <div class="col-3">
-                        <label>第1筆資料索引</label>
-                        <input type="number" min="1" class="form-control">
-                    </div>
-                    <div class="col-3">
-                        <label>第2筆資料索引</label>
-                        <input type="number" min="1" class="form-control">
-                    </div>
-                    <div class="col-2" style="display: inline-grid;">
-                        <button class="btn btn-outline-primary btn-rounded count-area-btn" style="width: auto;">計算</button>
-                    </div>
-                    <div class="col-3" style="align-self: end;font-weight: bold;">
-                        <p class="area-text"></p>
-                    </div>
-                    <div class="col-1">
-                        <button type="button" class="btn btn-outline-danger delete-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
-                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"></path>
-                                <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"></path>
-                            </svg>
-                        </button>
-                    </div>
+<div class="row" style="background-color: #efefef; padding: 10px; margin: 10px 0px; border-radius: 10px;">
+    <div class="col-5">
+        <span><b>請選擇一個已轉換過的檔案</b></span><br>
+        <span style="color: red;"><b>若未轉換過請先至<a href="/">轉檔</a>頁面轉換</b></span>
+    </div>
+    <div id="fileList" class="col-7 list-group" style="height: 200px; overflow-y: auto; padding: 5px 0px;">
+        {% for file in files %}
+        <button type="button" class="list-group-item list-group-item-action">{{ file }}</button>
+        {% endfor %}
+    </div>
+</div>
+<ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="GRF-tab" data-bs-toggle="tab" data-bs-target="#GRF" type="button" role="tab" aria-controls="GRF" aria-selected="true">GRF分析</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="stability-tab" data-bs-toggle="tab" data-bs-target="#stability" type="button" role="tab" aria-controls="stability" aria-selected="false">穩定平衡指數</button>
+    </li>
+</ul>
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="GRF" role="tabpanel" aria-labelledby="GRF-tab">
+        <div class="chart-block">
+            <div style="text-align: end;">
+                <span style="font-size:1.2rem"><b>單位：</b></span>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="unit" value="N" checked>
+                    <label class="form-check-label" for="N">N</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="unit" value="BW">
+                    <label class="form-check-label" for="BW">Body Weight</label>
                 </div>
             </div>
-            <button class="btn btn-outline-success btn-rounded" id="AddBlockBtn">新增區塊</button>
+            <canvas id="lineChart"></canvas>
         </div>
-        <div class="col-12 chart-block" style="display: none;">
+        <div class="chart-block">
+            <span>最大值：<span id="max"></span></span>
+            <span>最大值時間：<span id="time"></span></span>
+            <span>負荷率：<span id="rate"></span></span>
+        </div>
+        <div class="params-block" data-dataset-id="0" style="position: relative;">
+            <div class="form-group row" style="align-items: end;">
+                <p style="font-weight: bold;"><span class="badge bg-success phase-title"></span> 計算Fz面積(衝量)</p>
+                <div class="col-3">
+                    <label>第1筆資料索引</label>
+                    <input type="number" min="1" class="form-control">
+                </div>
+                <div class="col-3">
+                    <label>第2筆資料索引</label>
+                    <input type="number" min="1" class="form-control">
+                </div>
+                <div class="col-2">
+                    <button class="btn btn-outline-primary btn-rounded count-impulse-btn">計算</button>
+                </div>
+                <div class="col-4" style="font-weight: bold;">
+                    <span class="impulse-text"></span>
+                </div>
+                <button type="button" class="btn btn-outline-danger delete-btn" style="width: auto; position: absolute; top: 5px; right: 5px;">
+                    <i class="bi bi-x-lg"></i>
+                    刪除
+                </button>
+            </div>
+        </div>
+        <button class="btn btn-outline-success btn-rounded" id="addBlockBtn" style="display: none">
+            <i class="bi bi-plus-lg"></i>
+            新增階段
+        </button>
+    </div>
+    <div class="tab-pane fade" id="stability" role="tabpanel" aria-labelledby="stability-tab">
+        <div class="chart-block">
             <canvas id="scatterChart"></canvas>
         </div>
-        <div style="display: none; background-color: #efefef;padding: 10px;margin: 10px 0px;border-radius: 10px;">
+        <div class="chart-block">
             <span id="EllipseText"></span>
+            <div>
+                <p>靜態平衡</p>
+                <span>COP VEL-total(mm/s)：<span id="VEL-total"></span></span>
+                <span>COP VEL-AP(mm/s)：<span id="VEL-AP"></span></span>
+                <span>COP VEL-ML(mm/s)：<span id="VEL-ML"></span></span>
+                <span>COP AMP-AP(mm)：<span id="AMP-AP"></span></span>
+                <span>COP AMP-ML(mm)：<span id="AMP-ML"></span></span>
+                <span>COP AREA(mm<sup>2</sup>)：<span id="COP-area"></span></span>
+                <p>動態平衡</p>
+                <span>APSI：<span id="APSI"></span></span>
+                <span>MLSI：<span id="MLSI"></span></span>
+                <span>VSI：<span id="VSI"></span></span>
+                <span>DPSI：<span id="DPSI"></span></span>
+            </div>
         </div>
     </div>
 </div>

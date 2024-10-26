@@ -1,45 +1,44 @@
 {% extends "base.html" %}
 {% block title %}轉檔{% endblock %}
 {% block content %}
-<div class="row" style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
+<div style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
     <form action="/upload" method="post" enctype="multipart/form-data">
-        <div style="margin:5px 0px;">
-            <span><b>請選擇要計算的項目</b></span>
-            <div id="CheckList">
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" value="COP" checked>
-                    <label class="form-check-label">COP</label>
-                </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" value="" disabled>
-                    <label class="form-check-label">other</label>
+        <h4 style="color: #4b4a4a; margin: 5px;">轉檔</h4>
+        <div class="row" style="padding: 10px;">
+            <div class="col-6">
+                <span><b>請選擇要計算的項目</b></span>
+                <div id="checkList">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" value="COP" checked>
+                        <label class="form-check-label">COP</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" value="" disabled>
+                        <label class="form-check-label">other</label>
+                    </div>
                 </div>
             </div>
+            <div class="col-6">
+                <label for="weight" class="form-label">
+                    <b>請輸入受試者體重(kg)</b>
+                    <i class="bi bi-exclamation-circle" data-bs-toggle="tooltip" data-bs-html="true" title="若上傳多個檔案<br>皆會以輸入的體重做計算" data-bs-placement="right" data-bs-custom-class="custom-tooltip" style="color:red; margin-left: 5px;font-size: 1.2rem;"></i>
+                </label>
+                <input class="form-control" type="number" min="1" id="weight">
+            </div>
+            <div class="col-6">
+                <label for="formFileMultiple" class="form-label"><b>上傳多個.txt文字檔</b><i class="bi bi-filetype-txt" style="margin-left: 5px;"></i></label>
+                <input class="form-control" type="file" multiple accept=".txt,.csv">
+            </div>
+            <div class="col-6" style="display: flex; align-items: end; justify-content: end; gap: 10px;">
+                <button id="submitBtn" class="btn btn-outline-success btn-rounded" type="submit">上傳</button>
+                <button id="loadBtn" class="btn btn-outline-success btn-rounded" type="button" style="display: none;" disabled>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="vertical-align: baseline;"></span>
+                    轉檔中...
+                </button> 
+                <button id="downloadBtn" class="btn btn-outline-primary btn-rounded" type="button" style="display: none;">下載excel</button>
+            </div>
         </div>
-        <div>
-            <label for="weight" class="form-label">
-                <b>請輸入受試者體重(kg)</b>
-                <i class="bi bi-exclamation-circle" data-bs-toggle="tooltip" data-bs-html="true" title="若上傳多個檔案<br>皆會以輸入的體重做計算" data-bs-placement="right" data-bs-custom-class="custom-tooltip" style="color:red; margin-left: 5px;font-size: 1.2rem;"></i>
-            </label>
-            <input class="form-control" type="number" min="1" id="weight" style="width:25%">
-        </div>
-        <div class="col-3 mb-3" style="margin: 5px 0px;">
-            <label for="formFileMultiple" class="form-label"><b>上傳多個.txt文字檔</b><i class="bi bi-filetype-txt" style="margin-left: 5px;"></i></label>
-            <input class="form-control" type="file" multiple accept=".txt,.csv">
-        </div>
-    </form>
-    <div class="row">
-        <div class="col-2">
-            <button id="submitBtn" class="btn btn-outline-success btn-rounded">上傳</button>
-            <button id="loadBtn" class="btn btn-outline-success btn-rounded" type="button" style="display: none;" disabled>
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="vertical-align: baseline;"></span>
-                轉檔中...
-            </button>
-        </div>
-        <div class="col-2">
-            <button id="downloadBtn" class="btn btn-outline-primary btn-rounded" style="width: auto; display: none;">下載excel</button>
-        </div>
-    </div>
+    </form>     
 </div>
 {% endblock %}
 

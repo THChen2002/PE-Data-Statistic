@@ -270,7 +270,7 @@ $(document).ready(function () {
         $newBlock.data('dataset-id', newDatasetId);
         $newBlock.addClass('active');
         $newBlock.show();
-        $newBlock.insertBefore($('#addBlockBtn'));
+        $newBlock.insertBefore($('#addBlockBtn').parent());
     }
 
     // 取得新的dataset id(目前最後一個的dataset id + 1)

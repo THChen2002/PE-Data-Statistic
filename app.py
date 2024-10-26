@@ -37,7 +37,7 @@ def upload_file():
     return jsonify({'message': '檔案上傳成功', 'filename': ','.join(file_names)})
         
 
-@app.route('/download/<name>', methods=['GET', 'POST'])
+@app.route('/download/<name>', methods=['GET'])
 def download_file(name):
     files = name.split(',')
     zip_file_name = 'download.zip'
@@ -197,6 +197,16 @@ def remove_fz_less_than_10(df):
     start = fz_more_than_10_index.index[0]
     # 找出最後一筆Fz大於10的index
     end = fz_more_than_10_index.index[-1]
+
+    # window = 50
+    # threshold = 0.1
+    # # 計算滾動平均以平滑資料並幫助識別穩定點
+    # rolling_mean = df['Fz(N)'][start:end].rolling(window=window).mean()
+    # # 找到力開始穩定的點，即滾動平均值的變化變得最小的地方
+    # steady_state_index = (rolling_mean.diff().abs() < threshold).idxmax()
+
+    # # 確保穩定狀態不在範圍之外
+    # end = min(steady_state_index, end)
     return df[start-1:end+1]
 
 # TODO: 計算方式待確認

@@ -1,6 +1,7 @@
 $(document).ready(function () {
     // 上傳按鈕點擊事件
-    $('#submitBtn').click(function () {
+    $('form').submit(function (e) {
+        e.preventDefault();
         // 受試者體重
         let weight = $('#weight').val();
         // 上傳的檔案
@@ -17,7 +18,7 @@ $(document).ready(function () {
         }
         let formData = new FormData();
         
-        $(this).hide();
+        $('#submitBtn').hide();
         $('#loadBtn').show();
         $('#downloadBtn').hide();
 
@@ -59,7 +60,7 @@ $(document).ready(function () {
 
     function get_checked_items(){
         let checked_items = [];
-        $('#CheckList input:checked').each(function(){
+        $('#checkList input:checked').each(function(){
             checked_items.push($(this).val());
         });
         return checked_items;

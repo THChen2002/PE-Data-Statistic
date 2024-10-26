@@ -41,9 +41,9 @@
             <canvas id="lineChart"></canvas>
         </div>
         <div class="chart-block">
-            <span>最大值：<span id="max"></span></span>
-            <span>最大值時間：<span id="time"></span></span>
-            <span>負荷率：<span id="rate"></span></span>
+            <span style="font-weight: bold;margin: 0px 5px;">最大值：<span id="max" style="font-weight: lighter;"></span></span>
+            <span style="font-weight: bold;margin: 0px 5px;">最大值時間：<span id="time" style="font-weight: lighter;"></span></span>
+            <span style="font-weight: bold;margin: 0px 5px;">負荷率：<span id="rate" style="font-weight: lighter;"></span></span>
         </div>
         <div class="params-block" data-dataset-id="0" style="position: relative;">
             <div class="form-group row" style="align-items: end;">
@@ -68,10 +68,12 @@
                 </button>
             </div>
         </div>
-        <button class="btn btn-outline-success btn-rounded" id="addBlockBtn" style="display: none">
-            <i class="bi bi-plus-lg"></i>
-            新增階段
-        </button>
+        <div style="text-align: center; margin:10px 0">
+            <button class="btn btn-outline-success btn-rounded" id="addBlockBtn" style="display: none">
+                <i class="bi bi-plus-lg"></i>
+                新增階段
+            </button>
+        </div>
     </div>
     <div class="tab-pane fade" id="stability" role="tabpanel" aria-labelledby="stability-tab">
         <div class="chart-block">
@@ -80,18 +82,24 @@
         <div class="chart-block">
             <span id="EllipseText"></span>
             <div>
-                <p>靜態平衡</p>
-                <span>COP VEL-total(mm/s)：<span id="VEL-total"></span></span>
-                <span>COP VEL-AP(mm/s)：<span id="VEL-AP"></span></span>
-                <span>COP VEL-ML(mm/s)：<span id="VEL-ML"></span></span>
-                <span>COP AMP-AP(mm)：<span id="AMP-AP"></span></span>
-                <span>COP AMP-ML(mm)：<span id="AMP-ML"></span></span>
-                <span>COP AREA(mm<sup>2</sup>)：<span id="COP-area"></span></span>
-                <p>動態平衡</p>
-                <span>APSI：<span id="APSI"></span></span>
-                <span>MLSI：<span id="MLSI"></span></span>
-                <span>VSI：<span id="VSI"></span></span>
-                <span>DPSI：<span id="DPSI"></span></span>
+                <span class="badge bg-primary" style="font-weight: bold;font-size: 20px;">靜態平衡</span>
+                <div class="row" style="margin: 5px;">
+                    <span class="col-4">COP VEL-total(mm/s)：<span id="VEL-total"></span></span>
+                    <span class="col-4">COP VEL-AP(mm/s)：<span id="VEL-AP"></span></span>
+                    <span class="col-4">COP VEL-ML(mm/s)：<span id="VEL-ML"></span></span>
+                    <span class="col-4">COP AMP-AP(mm)：<span id="AMP-AP"></span></span>
+                    <span class="col-4">COP AMP-ML(mm)：<span id="AMP-ML"></span></span>
+                    <span class="col-4">COP AREA(mm<sup>2</sup>)：<span id="COP-area"></span></span>
+                </div>
+                <hr>
+                <span class="badge bg-success" style="font-weight: bold;font-size: 20px;">動態平衡</span>
+                <div class="row" style="margin: 5px;">
+                    <span class="col-3">APSI：<span id="APSI"></span></span>
+                    <span class="col-3">MLSI：<span id="MLSI"></span></span>
+                    <span class="col-3">VSI：<span id="VSI"></span></span>
+                    <span class="col-3">DPSI：<span id="DPSI"></span></span>
+                </div>
+
             </div>
         </div>
     </div>

@@ -3,8 +3,8 @@ $(document).ready(function () {
     let lineChart;
     const scatterCtx = $('#scatterChart');
     let scatterChart;
-    let chartData = {};
-    let loading_rate = {};
+    let lineChartData = {};
+    let loading_rate = [];
 
     // 檔案清單點擊事件
     $('#fileList').on('click', 'button', function () {
@@ -19,7 +19,7 @@ $(document).ready(function () {
     // 單位轉換事件
     $('input[name=unit]').change(function () {
         let unit = $(this).val().toUpperCase();
-        let datasets = chartData[unit];
+        let datasets = lineChartData[unit];
         lineChart.data.datasets = datasets;
         lineChart.options.scales.y.title.text = `Force (${unit})`;
         lineChart.update();
@@ -33,8 +33,10 @@ $(document).ready(function () {
     $(document).on('click', '.count-impulse-btn', function () {
         let $paramsBlock = $(this).closest('.params-block');
         let $inputs = $paramsBlock.find('input');
-        let start = $inputs.eq(0).val();
-        let end = $inputs.eq(1).val();
+        // 找到name開頭為no的radio button，取得選取的值
+        let no = $inputs.filter('[name^=no]:checked').val();
+        let start = $inputs.filter('[name=start]').val();
+        let end = $inputs.filter('[name=end]').val();
         let unit = $('input[name=unit]:checked').val().toUpperCase();
         if (!(start && end)) {
             alert('請輸入正確的數字');
@@ -45,6 +47,7 @@ $(document).ready(function () {
             type: 'get',
             data: {
                 filename: $('#fileList button.active').text(),
+                no: no,
                 start: start,
                 end: end,
                 unit: unit
@@ -87,17 +90,23 @@ $(document).ready(function () {
                 if (response.success) {
                     const result = response.result;
                     const data = result.data;
+                    const datasets = [];
                     if(type === 'line'){
                         // x軸的標籤(time)
                         const labels = data[Object.keys(data)[0]].map((_, i) => i + 1);
-                        const datasets = [];
                         const colorMap = {
-                            'Fx(N)': 'rgb(255, 159, 64)',
-                            'Fy(N)': 'rgb(255, 99, 132)',
-                            'Fz(N)': 'rgb(54, 162, 235)',
-                            'Fx(BW)': 'rgb(255, 159, 64)',
-                            'Fy(BW)': 'rgb(255, 99, 132)',
-                            'Fz(BW)': 'rgb(54, 162, 235)'
+                            'Fx(N)_1': 'rgb(245, 170, 99)',
+                            'Fy(N)_1': 'rgb(242, 128, 153)',
+                            'Fz(N)_1': 'rgb(84, 170, 235)',
+                            'Fx(BW)_1': 'rgb(245, 170, 99)',
+                            'Fy(BW)_1': 'rgb(242, 128, 153)',
+                            'Fz(BW)_1': 'rgb(84, 170, 235)',
+                            'Fx(N)_2': 'rgb(220, 122, 20)',
+                            'Fy(N)_2': 'rgb(250, 54, 99)',
+                            'Fz(N)_2': 'rgb(10, 124, 205)',
+                            'Fx(BW)_2': 'rgb(220, 122, 20)',
+                            'Fy(BW)_2': 'rgb(250, 54, 99)',
+                            'Fz(BW)_2': 'rgb(10, 124, 205)'
                         };
                         $.each(data, function (key, value) {
                             if (key in colorMap){
@@ -106,31 +115,66 @@ $(document).ready(function () {
                                     data: value,
                                     fill: false,
                                     borderColor: colorMap[key],
-                                    tension: 0.1
+                                    tension: 0.1,
+                                    hidden: !['Fx(N)_1', 'Fy(N)_1', 'Fz(N)_1', 'Fx(BW)_1', 'Fy(BW)_1', 'Fz(BW)_1'].includes(key)
                                 };
                                 datasets.push(dataset);
                             }
                         });
 
                         // 將資料分成N和BW兩個部分存入全域變數
-                        chartData = {
-                            'N': datasets.filter(dataset => ['Fx(N)', 'Fy(N)', 'Fz(N)'].includes(dataset.label)),
-                            'BW': datasets.filter(dataset => ['Fx(BW)', 'Fy(BW)', 'Fz(BW)'].includes(dataset.label))
+                        lineChartData = {
+                            'N': datasets.filter(dataset => ['Fx(N)_1', 'Fy(N)_1', 'Fz(N)_1', 'Fx(N)_2', 'Fy(N)_2', 'Fz(N)_2'].includes(dataset.label)),
+                            'BW': datasets.filter(dataset => ['Fx(BW)_1', 'Fy(BW)_1', 'Fz(BW)_1', 'Fx(BW)_2', 'Fy(BW)_2', 'Fz(BW)_2'].includes(dataset.label))
                         }
                         loading_rate = result.loading_rate;
 
-                        initLineChart(chartData[unit], labels);
+                        initLineChart(lineChartData[unit], labels);
                         show_loading_rate_info(unit);
                         initParamsBlock();
                     } else if(type === 'scatter'){
-                        initScatterChart(data, result.ellipse);
-                        show_stability_info(result.stability_index, result.ellipse.area);
+                        const colorMap = {
+                            'COP(x)(m)_1': 'red',
+                            // 'COP(y)(m)_1': 'red',
+                            'COP(x)(m)_2': 'blue',
+                            // 'COP(y)(m)_2': 'blue',
+                            'ellipse1': 'rgba(54, 162, 235, 0.3)',
+                            'ellipse2': 'rgba(255, 99, 132, 0.3)',
+                        }
+                        $.each(data, function (key, value) {
+                            const index = key.split('_')[1];
+                            if (key in colorMap){
+                                let dataset = {
+                                    label: `測力板${index}`,
+                                    data: value.map((_, i) => ({ x: data[`COP(x)(m)_${index}`][i], y: data[`COP(y)(m)_${index}`][i] })),
+                                    showLine: false,
+                                    hidden: !['COP(x)(m)_1'].includes(key),
+                                };
+                                datasets.push(dataset);
+                            }
+                        });
+                        ellipseData = {};
+                        $.each(result.ellipse, function(index, value){
+                            ellipseData[`ellipse${index+1}`] = {
+                                type: 'ellipse',
+                                xMin: value.xMin,
+                                xMax: value.xMax,
+                                yMin: value.yMin,
+                                yMax: value.yMax,
+                                rotation: value.rotation,   
+                                backgroundColor: colorMap[`ellipse${index+1}`],
+                                display: index+1 === 1
+                            };
+                        });
+                        
+                        initScatterChart(datasets, ellipseData);
+                        show_stability_info(result.stability_index, result.ellipse);
                     }
                     $('.chart-block').show();
                 }
             },
             error: function (error) {
-                alert('發生錯誤，請洽系統管理員');
+                alert('圖表初始化錯誤，請洽系統管理員');
             }
         });
     };
@@ -190,22 +234,14 @@ $(document).ready(function () {
     };
 
     // 初始化ScatterChart
-    function initScatterChart(data, ellipse) {
+    function initScatterChart(datasets, ellipse) {
         if (scatterChart) {
             scatterChart.destroy();
         }
         scatterChart = new Chart(scatterCtx, {
             type: 'scatter',
             data: {
-                datasets: [
-                    {
-                        label: 'COP(x) vs COP(y)',
-                        data: data['COP(x)(m)'].map((_, i) => ({ x: data['COP(x)(m)'][i], y: data['COP(y)(m)'][i] })),
-                        backgroundColor: 'red',
-                        borderColor: 'red',
-                        showLine: false,
-                    },
-                ]
+                datasets: datasets
             },
             options: {
                 scales: {
@@ -231,18 +267,21 @@ $(document).ready(function () {
                     }
                 },
                 plugins: {
-                    annotation: {
-                        annotations: {
-                            ellipse1: {
-                                type: 'ellipse',
-                                xMin: ellipse.xMin,
-                                xMax: ellipse.xMax,
-                                yMin: ellipse.yMin,
-                                yMax: ellipse.yMax,
-                                rotation: ellipse.rotation,   
-                                backgroundColor: 'rgba(255, 99, 132, 0.25)'
-                            }
+                    legend: {
+                        onClick: (e, legendItem, legend) => {
+                            const chart = legend.chart;
+                            const index = legendItem.datasetIndex + 1;
+                            const annotation = chart.options.plugins.annotation.annotations[`ellipse${index}`];
+        
+                            annotation.display = !annotation.display;
+                            
+                            // Call the default onClick handler
+                            Chart.defaults.plugins.legend.onClick.call(chart, e, legendItem, legend);
+                            chart.update();
                         }
+                    },
+                    annotation: {
+                        annotations: ellipse
                     }
                 }
             }
@@ -267,6 +306,8 @@ $(document).ready(function () {
         let $newBlock = $('.params-block').first().clone();
         let newDatasetId = getNewDatasetId();
         $newBlock.find('.phase-title').text('Phase ' + newDatasetId);
+        // 將radio button的name改成no-datasetId
+        $newBlock.find('input[type=radio]').attr('name', `no-${newDatasetId}`);
         $newBlock.data('dataset-id', newDatasetId);
         $newBlock.addClass('active');
         $newBlock.show();
@@ -310,17 +351,37 @@ $(document).ready(function () {
     }
 
     // 顯示loading rate資訊
-    function show_loading_rate_info(unit){
-        $.each(loading_rate[unit], function(key, value){
-            $(`#${key}`).text(`${value.value}(${value.unit})`);
+    function show_loading_rate_info(unit) {
+        const $loadingRateBlock = $('#loading-rate-block');
+        const $block = $loadingRateBlock.children().first();
+        const $cloneBlock = $block.clone();
+        $loadingRateBlock.empty();
+        $.each(loading_rate, function(index, value) {
+            const data = value[unit];
+            let $newBlock = $cloneBlock.clone();
+            $newBlock.find('.phase-title').text(`測力板 ${index+1}`);
+            $newBlock.find('.max').text(`${data.max.value} (${data.max.unit})`);
+            $newBlock.find('.time').text(`${data.time.value} (${data.time.unit})`);
+            $newBlock.find('.rate').text(`${data.rate.value} (${data.rate.unit})`);
+            $loadingRateBlock.append($newBlock);
         });
     }
 
     // 顯示穩定指數資訊
-    function show_stability_info(info, area){
-        $.each(info, function(key, value){
-            $(`#${key}`).text(value);
+    function show_stability_info(stability_index, ellipse){
+        let $stability = $('#stability');
+        let $block = $stability.find('.stability-block').first();
+        let $cloneBlock = $block.clone();
+        // 除了第一個cnavas區塊，其他都刪除
+        $stability.children('div:not(:first)').remove();
+        $.each(stability_index, function(index, stability){
+            let $newBlock = $cloneBlock.clone();
+            $newBlock.find('.no-title').text(`測力板 ${index+1}`);
+            $.each(stability, function(key, value){
+                $newBlock.find(`.${key}`).text(value);
+            });
+            $newBlock.find('.COP-area').text(ellipse[index].area);
+            $stability.append($newBlock);
         });
-        $('#COP-area').text(area);
     }
 });

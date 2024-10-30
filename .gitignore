@@ -163,3 +163,4 @@ cython_debug/
 uploads/*
 !uploads/.gitkeep
 實驗資料/
+其他資料/

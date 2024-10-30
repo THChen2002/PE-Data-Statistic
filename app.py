@@ -4,6 +4,8 @@ import os
 import zipfile
 import numpy as np
 import pandas as pd
+import re
+from collections import defaultdict
 # from sklearn.covariance import EllipticEnvelope
 
 UPLOAD_FOLDER = 'uploads'
@@ -30,7 +32,7 @@ def upload_file():
     for file in files:
         if file and allowed_file(file.filename):
             file_name = secure_filename(file.filename)
-            file_names.append(file_name.replace('.txt', '.xlsx'))
+            file_names.append(file_name.split('.')[0])
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
             file.save(file_path)
             txt_to_excel(file_path, items, weight)
@@ -44,34 +46,47 @@ def download_file(name):
     zip_file_path = os.path.join(app.config['UPLOAD_FOLDER'], zip_file_name)
     with zipfile.ZipFile(zip_file_path, 'w') as zipf:
         for file in files:
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file)
-            zipf.write(file_path, arcname=os.path.basename(file_path))
-            processing_file_path = file_path.replace('.xlsx', '_processing.xlsx')
-            zipf.write(processing_file_path, arcname=os.path.basename(processing_file_path))
+            # 一個檔案有兩個測力板
+            for i in range(1, 3):
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file}_{i}.xlsx')
+                zipf.write(file_path, arcname=os.path.basename(file_path))
+                processing_file_path = file_path.replace('.xlsx', '_processing.xlsx')
+                zipf.write(processing_file_path, arcname=os.path.basename(processing_file_path))
     return send_file(zip_file_path, as_attachment=True)
 
 @app.route('/api/get_chart_data', methods=['GET'])
 def get_chart_data():
     file_name = request.args.get('filename')
     chart_type = request.args.get('type')
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
-    df = pd.read_excel(file_path)[:600]
-    # 把每個column的資料轉成list
-    data = {col: df[col].tolist() for col in df.columns}
-    result = {}
-    if chart_type == 'line':
-        result['data'] = data
-        result['loading_rate'] = {
-            'N': count_loading_rate(np.array(df['Fz(N)']), 'N'),
-            'BW': count_loading_rate(np.array(df['Fz(BW)']), 'BW')
-        }
-    elif chart_type == 'scatter':
-        ellipse_data = get_ellipse_data(df)
-        result['data'] = {col: data[col] for col in ['COP(x)(m)', 'COP(y)(m)']}
-        result['stability_index'] = count_stability_index(df)
-        result['ellipse'] = ellipse_data
-    else:
-        result['data'] = data
+    result = defaultdict(dict)
+    result['loading_rate'] = []
+    result['stability_index'] = []
+    result['ellipse'] = []
+    for i in range(1, 3):
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file_name}_{i}_processing.xlsx')
+        if not os.path.exists(file_path):
+            continue
+        df = pd.read_excel(file_path)[:600]
+        # 把每個column的資料轉成list
+        data = {col: df[col].tolist() for col in df.columns}
+        # 欄位名字後面加上_{i}，用於區分兩個測力板的資料
+        data = {f'{col}_{i}': data[col] for col in data}
+
+        if chart_type == 'line':
+            result['data'].update(data)
+            result['loading_rate'].append({
+                'N': count_loading_rate(np.array(df['Fz(N)']), 'N'),
+                'BW': count_loading_rate(np.array(df['Fz(BW)']), 'BW')
+            })
+        elif chart_type == 'scatter':
+            ellipse_data = get_ellipse_data(df)
+            result['data'].update({col: data[col] for col in [f'COP(x)(m)_{i}', f'COP(y)(m)_{i}']})
+            # result[f'stability_index_{i}'] = count_stability_index(df)
+            # result[f'ellipse_{i}'] = ellipse_data
+            result['stability_index'].append(count_stability_index(df))
+            result['ellipse'].append(ellipse_data)
+        else:
+            result['data'].update(data)
 
     return jsonify({'success': True, 'result': result})
 
@@ -79,6 +94,7 @@ def get_chart_data():
 def count_impulse():
     """計算Fz區間面積(衝量)"""
     file_name = request.args.get('filename')
+    no = request.args.get('no')
     start_index = request.args.get('start')
     end_index = request.args.get('end')
     unit = request.args.get('unit')
@@ -86,7 +102,7 @@ def count_impulse():
         # index由小到大排序
         index = [int(end_index)-1, int(start_index)-1]
         index.sort()
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file_name)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file_name}_{no}_processing.xlsx')
         df = pd.read_excel(file_path)[:600]
         times = np.array(df.index/1200)
         Fz_values = np.array(df['Fz(N)']) if unit == 'N' else np.array(df['Fz(BW)'])
@@ -109,39 +125,61 @@ def get_file_list():
     """
     file_list = os.listdir(app.config['UPLOAD_FOLDER'])
     file_list = [file for file in file_list if file.endswith('processing.xlsx')]
-    return file_list
+
+    # 使用正則表達式移除尾部的 '_數字_processing.xlsx'，只保留基礎檔案名稱
+    cleaned_names = set(re.sub(r'_\d+_processing\.xlsx$', '', file) for file in file_list)
+
+    # 回傳去重後的檔案列表
+    return list(cleaned_names)
 
 def txt_to_excel(file_path, items, weight):
     """將txt檔轉成excel檔，根據items選擇要計算的資料"""
-    header=['Fx(N)','Fy(N)','Fz(N)','Mx(N-m)','My(N-m)','Mz(N-m)']
-    original_df = pd.read_table(file_path, sep=',', names=header)
     # 如果有輸入體重，將F/(N*weight)
     if weight:
         weight = float(weight)
         N = 9.8
-        original_df['Fx(BW)'] = original_df['Fx(N)'] / (N * weight)
-        original_df['Fy(BW)'] = original_df['Fy(N)'] / (N * weight)
-        original_df['Fz(BW)'] = original_df['Fz(N)'] / (N * weight)
-    if 'COP' in items:
-        original_df = count_COP(original_df)
-    original_df.to_excel(file_path.replace('.txt', '.xlsx'), index=False)
-    remove_fz_less_than_10(original_df).to_excel(file_path.replace('.txt', '_processing.xlsx'), index=False)
+        # 讀取原始txt檔，不指定header，將內容視為純資料
+        original_df = pd.read_table(file_path, sep=',')
+
+        # 為拆分後的資料賦予欄位名稱
+        headers = ['Fx(N)', 'Fy(N)', 'Fz(N)', 'Mx(N-m)', 'My(N-m)', 'Mz(N-m)']
+        # header = ['Fx1(N)', 'Fy1(N)', 'Fz1(N)', 'Mx1(N-m)', 'My1(N-m)', 'Mz1(N-m)',
+        #           'Fx2(N)', 'Fy2(N)', 'Fz2(N)', 'Mx2(N-m)', 'My2(N-m)', 'Mz2(N-m)']
+        
+        start, end = get_fz_keep_index(original_df)
+        # 拆分資料為兩部分：前6欄和後6欄
+        df1 = original_df.iloc[:, :6]
+        df2 = original_df.iloc[:, 6:]
+        for i, df in enumerate([df1, df2]):
+            df.columns = headers
+            df.loc[:, ['Fx(BW)']] = df['Fx(N)'] / (N * weight)
+            df.loc[:, ['Fy(BW)']] = df['Fy(N)'] / (N * weight)
+            df.loc[:, ['Fz(BW)']] = df['Fz(N)'] / (N * weight)
+
+            if'COP' in items:
+                df = count_COP(df)
+
+            # 儲存未去頭尾資料的檔案
+            df.to_excel(file_path.replace('.txt', f'_{i+1}.xlsx'), index=False)
+            # 儲存去頭尾資料的檔案
+            df[start:end].to_excel(file_path.replace('.txt', f'_{i+1}_processing.xlsx'), index=False)
 
 def count_COP(df):
     """
     計算COP
-    COP(x) = -My/Fz
-    COP(y) = Mx/Fz
+    COP(x) = Mx/Fz
+    COP(y) = -My/Fz
     """
-    df['COP(x)(m)'] = -(df['My(N-m)'] / df['Fz(N)'])
-    df['COP(y)(m)'] = df['Mx(N-m)'] / df['Fz(N)']
+    df.loc[:, ['COP(x)(m)']] = df['Mx(N-m)'] / df['Fz(N)']
+    df.loc[:, ['COP(y)(m)']] = -(df['My(N-m)'] / df['Fz(N)'])
     return df
 
 def count_loading_rate(Fz_values, unit):
     """計算Fz從10N到max的斜率"""
     max_index = np.argmax(Fz_values)
     max_value = Fz_values[max_index]
-    rate = (max_value - Fz_values[0]) / (max_index*(1/1200))
+    # 取Fz第2筆資料的值(因為第2筆資料才>10N)
+    rate = (max_value - Fz_values[1]) / (max_index*(1/1200))
     result = {
         'max': {
             'value': round(max_value, 3),
@@ -162,37 +200,40 @@ def count_loading_rate(Fz_values, unit):
 def count_stability_index(df):
     """
     計算平衡指數
-    COP VEL-total(mm/s): sqrt(∑(COPx(n+1) - COPx(n))**2 + ∑(COPy(n+1) - COPy(n))**2)/n
-    COP VEL-AP(mm/s): sqrt(∑(COPx)**2)/n
-    COP VEL-ML(mm/s): sqrt(∑(COPy)**2)/n
+    COP VEL-total(mm/s): ∑sqrt((COPx(n+1) - COPx(n))**2 + (COPy(n+1) - COPy(n))**2)/n
+    COP VEL-AP(mm/s): ∑sqrt((COPx)**2)/n
+    COP VEL-ML(mm/s): ∑sqrt((COPy)**2)/n
     COP AMP-AP(mm): max(COPx) - min(COPx)
     COP AMP-ML(mm): max(COPy) - min(COPy)
     APSI: sqrt(∑(0-GRFxi)**2/n)/w
     MLSI: sqrt(∑(0-GRFyi)**2/n)/w
-    VSI: sqrt(∑(0-GRFzi)**2/n)/w
+    VSI: sqrt(∑(w-GRFzi)**2/n)/w
     DPSI: sqrt([∑(0-GRFxi)**2 + ∑(0-GRFyi)**2 + ∑(w-GRFzi)**2] / n) / w
     """
     N = 9.8
+    weight = df['Fz(N)'][0] / df['Fz(BW)'][0]
     result = {
-        'VEL-total': round(np.sqrt(np.sum((df['COP(x)(m)'].diff())**2 + (df['COP(y)(m)'].diff())**2) / (len(df) / 1200)) * 1000, 2),
-        'VEL-AP': round(np.sqrt(np.sum(df['COP(x)(m)'].diff()**2) / (len(df) / 1200)) * 1000, 2),
-        'VEL-ML': round(np.sqrt(np.sum(df['COP(y)(m)'].diff()**2) / (len(df) / 1200)) * 1000, 2),
+        'VEL-total': round(np.sum(np.sqrt((df['COP(x)(m)'].diff())**2 + (df['COP(y)(m)'].diff())**2)) / (len(df) / 1200) * 1000, 2),
+        'VEL-AP': round(np.sum(np.sqrt(df['COP(x)(m)'].diff()**2)) / (len(df) / 1200) * 1000, 2),
+        'VEL-ML': round(np.sum(np.sqrt(df['COP(y)(m)'].diff()**2)) / (len(df) / 1200) * 1000, 2),
         'AMP-AP': round((max(df['COP(x)(m)']) - min(df['COP(x)(m)'])) * 1000, 2),
         'AMP-ML': round((max(df['COP(y)(m)']) - min(df['COP(y)(m)'])) * 1000, 2),
-        'APSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2) / len(df)) / N, 2),
-        'MLSI': round(np.sqrt(np.sum((0 - df['Fy(N)'])**2) / len(df)) / N, 2),
-        'VSI': round(np.sqrt(np.sum((0 - df['Fz(N)'])**2) / len(df)) / N, 2),
-        'DPSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2 + (0 - df['Fy(N)'])**2 + (N - df['Fz(N)'])**2) / len(df)) / N, 2)
+        'APSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2) / len(df)) / weight, 2),
+        'MLSI': round(np.sqrt(np.sum((0 - df['Fy(N)'])**2) / len(df)) / weight, 2),
+        'VSI': round(np.sqrt(np.sum((weight - df['Fz(N)'])**2) / len(df)) / weight, 2),
+        'DPSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2) + np.sum((0 - df['Fy(N)'])**2) + np.sum((weight - df['Fz(N)'])**2) / len(df)) / weight, 2)
     }
     return result
 
 # TODO: 去尾資料方式待確認
-def remove_fz_less_than_10(df):
-    """移除頭尾資料
+def get_fz_keep_index(df):
+    """Return
+    Tuple: (start, end)
+    移除頭尾資料
     頭: 第一筆Fz大於10N
     尾: 等於體重
     """
-    fz_more_than_10_index = df[df['Fz(N)'] >= 10]
+    fz_more_than_10_index = df[df.iloc[:, 2] >= 10]
     # 找出第一筆Fz大於10的index
     start = fz_more_than_10_index.index[0]
     # 找出最後一筆Fz大於10的index
@@ -207,7 +248,7 @@ def remove_fz_less_than_10(df):
 
     # # 確保穩定狀態不在範圍之外
     # end = min(steady_state_index, end)
-    return df[start-1:end+1]
+    return start-1, end+1
 
 # TODO: 計算方式待確認
 def get_ellipse_data(df):

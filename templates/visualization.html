@@ -40,21 +40,37 @@
             </div>
             <canvas id="lineChart"></canvas>
         </div>
-        <div class="chart-block">
-            <span style="font-weight: bold;margin: 0px 5px;">最大值：<span id="max" style="font-weight: lighter;"></span></span>
-            <span style="font-weight: bold;margin: 0px 5px;">最大值時間：<span id="time" style="font-weight: lighter;"></span></span>
-            <span style="font-weight: bold;margin: 0px 5px;">負荷率：<span id="rate" style="font-weight: lighter;"></span></span>
+        <div class="chart-block" id="loading-rate-block">
+            <div class="row">
+                <div class="col-1">
+                    <span class="badge bg-info phase-title" style="font-size: 14px;"></span>
+                </div>
+                <span class="col-2" style="font-weight: bold;">最大值：<span class="max" style="font-weight: lighter;"></span></span>
+                <span class="col-2" style="font-weight: bold;">最大值時間：<span class="time" style="font-weight: lighter;"></span></span>
+                <span class="col-2" style="font-weight: bold;">負荷率：<span class="rate" style="font-weight: lighter;"></span></span>
+            </div>
         </div>
         <div class="params-block" data-dataset-id="0" style="position: relative;">
             <div class="form-group row" style="align-items: end;">
-                <p style="font-weight: bold;"><span class="badge bg-success phase-title"></span> 計算Fz面積(衝量)</p>
-                <div class="col-3">
-                    <label>第1筆資料索引</label>
-                    <input type="number" min="1" class="form-control">
+                <p style="font-weight: bold;"><span class="badge bg-success phase-title" style="font-size: 14px"></span> 計算Fz面積(衝量)</p>
+                <div class="col-2">
+                    <p>測力板</p>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" value="1" checked>
+                        <label class="form-check-label" for="1">第一塊</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" value="2">
+                        <label class="form-check-label" for="2">第二塊</label>
+                    </div>
                 </div>
-                <div class="col-3">
+                <div class="col-2">
+                    <label>第1筆資料索引</label>
+                    <input type="number" name="start" min="1" class="form-control">
+                </div>
+                <div class="col-2">
                     <label>第2筆資料索引</label>
-                    <input type="number" min="1" class="form-control">
+                    <input type="number" name="end" min="1" class="form-control">
                 </div>
                 <div class="col-2">
                     <button class="btn btn-outline-primary btn-rounded count-impulse-btn">計算</button>
@@ -79,27 +95,28 @@
         <div class="chart-block">
             <canvas id="scatterChart"></canvas>
         </div>
-        <div class="chart-block">
-            <span id="EllipseText"></span>
+        <div class="chart-block stability-block">
             <div>
-                <span class="badge bg-primary" style="font-weight: bold;font-size: 20px;">靜態平衡</span>
+                <span class="badge bg-info no-title" style="font-weight: bold; font-size: 18px;"></span>
+            </div>
+            <div style="padding: 15px;">
+                <span class="badge bg-primary" style="font-weight: bold; font-size: 14px;">靜態平衡</span>
                 <div class="row" style="margin: 5px;">
-                    <span class="col-4">COP VEL-total(mm/s)：<span id="VEL-total"></span></span>
-                    <span class="col-4">COP VEL-AP(mm/s)：<span id="VEL-AP"></span></span>
-                    <span class="col-4">COP VEL-ML(mm/s)：<span id="VEL-ML"></span></span>
-                    <span class="col-4">COP AMP-AP(mm)：<span id="AMP-AP"></span></span>
-                    <span class="col-4">COP AMP-ML(mm)：<span id="AMP-ML"></span></span>
-                    <span class="col-4">COP AREA(mm<sup>2</sup>)：<span id="COP-area"></span></span>
+                    <span class="col-4">COP VEL-total(mm/s)：<span class="VEL-total"></span></span>
+                    <span class="col-4">COP VEL-AP(mm/s)：<span class="VEL-AP"></span></span>
+                    <span class="col-4">COP VEL-ML(mm/s)：<span class="VEL-ML"></span></span>
+                    <span class="col-4">COP AMP-AP(mm)：<span class="AMP-AP"></span></span>
+                    <span class="col-4">COP AMP-ML(mm)：<span class="AMP-ML"></span></span>
+                    <span class="col-4">COP AREA(mm<sup>2</sup>)：<span class="COP-area"></span></span>
                 </div>
                 <hr>
-                <span class="badge bg-success" style="font-weight: bold;font-size: 20px;">動態平衡</span>
+                <span class="badge bg-success" style="font-weight: bold; font-size: 14px;">動態平衡</span>
                 <div class="row" style="margin: 5px;">
-                    <span class="col-3">APSI：<span id="APSI"></span></span>
-                    <span class="col-3">MLSI：<span id="MLSI"></span></span>
-                    <span class="col-3">VSI：<span id="VSI"></span></span>
-                    <span class="col-3">DPSI：<span id="DPSI"></span></span>
+                    <span class="col-3">APSI：<span class="APSI"></span></span>
+                    <span class="col-3">MLSI：<span class="MLSI"></span></span>
+                    <span class="col-3">VSI：<span class="VSI"></span></span>
+                    <span class="col-3">DPSI：<span class="DPSI"></span></span>
                 </div>
-
             </div>
         </div>
     </div>

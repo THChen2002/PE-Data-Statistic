@@ -81,8 +81,6 @@ def get_chart_data():
         elif chart_type == 'scatter':
             ellipse_data = get_ellipse_data(df)
             result['data'].update({col: data[col] for col in [f'COP(x)(m)_{i}', f'COP(y)(m)_{i}']})
-            # result[f'stability_index_{i}'] = count_stability_index(df)
-            # result[f'ellipse_{i}'] = ellipse_data
             result['stability_index'].append(count_stability_index(df))
             result['ellipse'].append(ellipse_data)
         else:
@@ -143,8 +141,6 @@ def txt_to_excel(file_path, items, weight):
 
         # 為拆分後的資料賦予欄位名稱
         headers = ['Fx(N)', 'Fy(N)', 'Fz(N)', 'Mx(N-m)', 'My(N-m)', 'Mz(N-m)']
-        # header = ['Fx1(N)', 'Fy1(N)', 'Fz1(N)', 'Mx1(N-m)', 'My1(N-m)', 'Mz1(N-m)',
-        #           'Fx2(N)', 'Fy2(N)', 'Fz2(N)', 'Mx2(N-m)', 'My2(N-m)', 'Mz2(N-m)']
         
         start, end = get_fz_keep_index(original_df)
         # 拆分資料為兩部分：前6欄和後6欄
@@ -170,8 +166,18 @@ def count_COP(df):
     COP(x) = Mx/Fz
     COP(y) = -My/Fz
     """
-    df.loc[:, ['COP(x)(m)']] = df['Mx(N-m)'] / df['Fz(N)']
-    df.loc[:, ['COP(y)(m)']] = -(df['My(N-m)'] / df['Fz(N)'])
+    # 確保Fz不為0，避免除以0
+    df.loc[:, 'COP(x)(m)'] = np.where(
+        df['Fz(N)'] != 0,
+        df['Mx(N-m)'] / df['Fz(N)'],
+        0
+    )
+
+    df.loc[:, 'COP(y)(m)'] = np.where(
+        df['Fz(N)'] != 0,
+        -(df['My(N-m)'] / df['Fz(N)']),
+        0
+    )
     return df
 
 def count_loading_rate(Fz_values, unit):
@@ -196,7 +202,6 @@ def count_loading_rate(Fz_values, unit):
     }
     return result
 
-# TODO: 計算方式待確認
 def count_stability_index(df):
     """
     計算平衡指數

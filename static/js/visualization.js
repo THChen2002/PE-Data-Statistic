@@ -171,6 +171,8 @@ $(document).ready(function () {
                         show_stability_info(result.stability_index, result.ellipse);
                     }
                     $('.chart-block').show();
+                } else {
+                    alert(response.message || '資料讀取失敗');
                 }
             },
             error: function (error) {

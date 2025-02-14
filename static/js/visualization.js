@@ -16,6 +16,32 @@ $(document).ready(function () {
         getChartData(filename, 'scatter', unit);
     });
 
+    // 最後一筆索引改變事件
+    $('input[name=d-end]').change(function () {
+        let filename = $('#fileList button.active').text();
+        let end = parseInt($(this).val());  // 取得使用者輸入的數量
+        let unit = $('input[name=unit]:checked').val().toUpperCase();
+    
+        if (isNaN(end) || end <= 0) {
+            alert("請輸入有效的數字");
+            return;
+        }
+        getChartData(filename, 'scatter', unit, end);
+        // getChartData(filename, 'line', unit, end);
+        // 複製 datasets 並截取前 end 筆數據
+        let updatedDatasets = lineChartData[unit].map(dataset => ({
+            ...dataset,
+            data: dataset.originalData.slice(0, end) // 只取前 end 筆
+        }));
+    
+        // 更新圖表的 datasets 和 labels
+        let updatedLabels = updatedDatasets.length > 0 ? updatedDatasets[0].data.map((_, i) => i + 1) : [];
+    
+        lineChart.data.labels = updatedLabels;
+        lineChart.data.datasets = updatedDatasets;
+        lineChart.update();
+    });
+
     // 單位轉換事件
     $('input[name=unit]').change(function () {
         let unit = $(this).val().toUpperCase();
@@ -77,10 +103,11 @@ $(document).ready(function () {
     });
 
     // 取得圖表資料
-    function getChartData(filename, type, unit) {
+    function getChartData(filename, type, unit, end=600) {
         let data = {
             filename: filename,
-            type: type
+            type: type,
+            end: end
         };
         $.ajax({
             url: '/api/get_chart_data',
@@ -113,6 +140,7 @@ $(document).ready(function () {
                                 let dataset = {
                                     label: key,
                                     data: value,
+                                    originalData: value,
                                     fill: false,
                                     borderColor: colorMap[key],
                                     tension: 0.1,
@@ -333,7 +361,7 @@ $(document).ready(function () {
         // 先刪除舊的 dataset
         deleteDataset(datasetId);
 
-        $paramsBlock.find('.impulse-text').text(`衝量: ${response.area} ${unit}/s`);
+        $paramsBlock.find('.impulse-text').text(`衝量: ${response.area} ${unit}∙s`);
         // 更新圖表
         lineChart.data.datasets.push({
             label: 'Phase_' + datasetId,

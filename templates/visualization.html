@@ -27,17 +27,23 @@
 <div class="tab-content">
     <div class="tab-pane fade show active" id="GRF" role="tabpanel" aria-labelledby="GRF-tab">
         <div class="chart-block">
-            <div style="text-align: end;">
-                <span style="font-size:1.2rem"><b>單位：</b></span>
+            <div class="d-flex align-items-center justify-content-end gap-3">
+                <label for="d-end" class="mb-0">最後一筆索引</label>
+                <input type="number" name="d-end" min="1" class="form-control form-control-sm w-auto">
+                
+                <span class="fw-bold">單位：</span>
+                
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="unit" value="N" checked>
-                    <label class="form-check-label" for="N">N</label>
+                    <input class="form-check-input" type="radio" name="unit" id="unitN" value="N" checked>
+                    <label class="form-check-label" for="unitN">N</label>
                 </div>
+                
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="unit" value="BW">
-                    <label class="form-check-label" for="BW">Body Weight</label>
+                    <input class="form-check-input" type="radio" name="unit" id="unitBW" value="BW">
+                    <label class="form-check-label" for="unitBW">Body Weight</label>
                 </div>
             </div>
+            
             <canvas id="lineChart"></canvas>
         </div>
         <div class="chart-block" id="loading-rate-block">

@@ -20,7 +20,7 @@ def index():
 
 @app.route('/visualization', methods=['GET'])
 def visualization():
-    files = get_file_list()
+    files = sorted(get_file_list())
     return render_template('visualization.html', **locals())
 
 @app.route('/upload', methods=['POST'])

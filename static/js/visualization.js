@@ -5,6 +5,7 @@ $(document).ready(function () {
     let scatterChart;
     let lineChartData = {};
     let loading_rate = [];
+    const endIndex = 600; // 圖表顯示的最後一筆索引
 
     // 檔案清單點擊事件
     $('#fileList').on('click', 'button', function () {
@@ -12,8 +13,9 @@ $(document).ready(function () {
         $(this).addClass('active');
         let filename = $(this).text();
         let unit = $('input[name=unit]:checked').val().toUpperCase();
-        getChartData(filename, 'line', unit);
-        getChartData(filename, 'scatter', unit);
+        $('input[name=d-end]').val(endIndex);
+        getChartData(filename, 'line', unit, endIndex);
+        getChartData(filename, 'scatter', unit, endIndex);
     });
 
     // 最後一筆索引改變事件
@@ -103,7 +105,7 @@ $(document).ready(function () {
     });
 
     // 取得圖表資料
-    function getChartData(filename, type, unit, end=600) {
+    function getChartData(filename, type, unit, end) {
         let data = {
             filename: filename,
             type: type,

@@ -394,6 +394,7 @@ $(document).ready(function () {
             $newBlock.find('.phase-title').text(`測力板 ${index+1}`);
             $newBlock.find('.max').text(`${data.max.value} (${data.max.unit})`);
             $newBlock.find('.time').text(`${data.time.value} (${data.time.unit})`);
+            $newBlock.find('.max-index').text(`${data.index + 1}`);
             $newBlock.find('.rate').text(`${data.rate.value} (${data.rate.unit})`);
             $loadingRateBlock.append($newBlock);
         });

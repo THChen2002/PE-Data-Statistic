@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import re
 from collections import defaultdict
-# from sklearn.covariance import EllipticEnvelope
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt', 'csv'}
@@ -188,6 +187,7 @@ def count_loading_rate(Fz_values, unit):
     # 取Fz第2筆資料的值(因為第2筆資料才>10N)
     rate = (max_value - Fz_values[1]) / (max_index*(1/1200))
     result = {
+        'index': int(max_index), # np.int64轉成int
         'max': {
             'value': round(max_value, 3),
             'unit': unit
@@ -256,7 +256,6 @@ def get_fz_keep_index(df):
     # end = min(steady_state_index, end)
     return start-1, end+1
 
-# TODO: 計算方式待確認
 def get_ellipse_data(df):
     """
     計算COP橢圓
@@ -277,14 +276,8 @@ def get_ellipse_data(df):
     cop_y = cop_y[np.isfinite(cop_y)]
     data_points = np.column_stack((cop_x, cop_y))
 
-    # 方法一: 使用 Z-分數法剔除離群值
+    # 使用 Z-分數法剔除離群值
     filtered_data_points = remove_outliers_z_score(data_points)
-
-    # 方法二: 使用 EllipticEnvelope 剔除離群值
-    # envelope = EllipticEnvelope(contamination=0.2)
-    # envelope.fit(data_points)
-    # inliers = envelope.predict(data_points) == 1
-    # filtered_data_points = data_points[inliers]
 
     # 計算橢圓參數
     cov = np.cov(filtered_data_points, rowvar=False)

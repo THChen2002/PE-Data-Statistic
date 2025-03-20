@@ -1,3 +1,15 @@
+## 使用說明
+
+請到 [Release](https://github.com/THChen2002/PE-Data-Statistic/releases) 下載 `app.exe`，並在同一層新增一個名為 `uploads` 的空資料夾，然後執行 `app.exe`，並在瀏覽器輸入`127.0.0.1:5000`。
+
+資料夾結構如下：
+
+```
+PE-Data-Statistic/
+├── app.exe
+└── uploads/
+```
+
 ## COP 計算公式
 
 - **COP X 分量**：  
@@ -39,5 +51,5 @@
   $VSI = \frac{\sqrt{\sum(w - GRF_{zi})^2 / n}}{w}$  
 
 - **動態穩定性指數 (DPSI)**：  
-  $DPSI = \frac{\sqrt{\left[ \sum(0 - GRF_{xi})^2 + \sum(0 - GRF_{yi})^2 + \sum(w - GRF_{zi})^2 \right] / n}}{w}$  
+  $DPSI = \frac{\sqrt{\left[ \sum(0 - GRF_{xi})^2 + \sum(0 - GRF_{yi})^2 + \sum(w - GRF_{zi})^2 \right] / n}}{w}$
 

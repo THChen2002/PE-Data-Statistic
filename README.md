@@ -1,12 +1,12 @@
 ## 使用說明
 
-請到 [Release](https://github.com/THChen2002/PE-Data-Statistic/releases) 下載 `app.exe`，並在同一層新增一個名為 `uploads` 的空資料夾，然後執行 `app.exe`，並在瀏覽器輸入`127.0.0.1:5000`。
+請到 [Release](https://github.com/THChen2002/PE-Data-Statistic/releases) 下載 `app.exe`(Windows) / `app`(MacOS) ，並在同一層新增一個名為 `uploads` 的空資料夾，然後執行 `app.exe` / `app`，並在瀏覽器輸入`127.0.0.1:5000`。
 
 資料夾結構如下：
 
 ```
 PE-Data-Statistic/
-├── app.exe
+├── app.exe or app
 └── uploads/
 ```
 

@@ -1,6 +1,6 @@
 ## 使用說明
 
-請到 [Release](https://github.com/THChen2002/PE-Data-Statistic/releases) 下載 `app.exe`(Windows) / `app`(MacOS) ，並在同一層新增一個名為 `uploads` 的空資料夾，然後執行 `app.exe` / `app`，並在瀏覽器輸入`127.0.0.1:5000`(Windows) / `127.0.0.1:5001`(MacOS)。
+請到 [Release](https://github.com/THChen2002/PE-Data-Statistic/releases) 下載 `app.exe`(Windows) / `mac.zip`(MacOS) ，並在同一層新增一個名為 `uploads` 的空資料夾，然後執行 `app.exe` / 解壓縮後執行`app`，並在瀏覽器輸入`127.0.0.1:5000`(Windows) / `127.0.0.1:5001`(MacOS)。
 
 資料夾結構如下：
 

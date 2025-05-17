@@ -5,7 +5,7 @@ $(document).ready(function () {
     let scatterChart;
     let lineChartData = {};
     let loading_rate = [];
-    const endIndex = 600; // 圖表顯示的最後一筆索引
+    const INITIAL_DISPLAY_COUNT = 1200;  // 初始顯示筆數
 
     // 檔案清單點擊事件
     $('#fileList').on('click', 'button', function () {
@@ -13,14 +13,12 @@ $(document).ready(function () {
         $(this).addClass('active');
         let filename = $(this).text();
         let unit = $('input[name=unit]:checked').val().toUpperCase();
-        $('input[name=d-end]').val(endIndex);
-        getChartData(filename, 'line', unit, endIndex);
-        getChartData(filename, 'scatter', unit, endIndex);
+        getChartData(filename, 'line', unit);
+        getChartData(filename, 'scatter', unit);
     });
 
     // 最後一筆索引改變事件
     $('input[name=d-end]').change(function () {
-        let filename = $('#fileList button.active').text();
         let end = parseInt($(this).val());  // 取得使用者輸入的數量
         let unit = $('input[name=unit]:checked').val().toUpperCase();
     
@@ -28,8 +26,16 @@ $(document).ready(function () {
             alert("請輸入有效的數字");
             return;
         }
-        getChartData(filename, 'scatter', unit, end);
-        // getChartData(filename, 'line', unit, end);
+
+        // 取得目前資料的總筆數
+        let totalDataPoints = lineChartData[unit][0].originalData.length;
+        
+        // 如果輸入的筆數超過資料總筆數，就顯示最後一筆
+        if (end > totalDataPoints) {
+            end = totalDataPoints;
+            $(this).val(end);  // 更新輸入框的值
+        }
+
         // 複製 datasets 並截取前 end 筆數據
         let updatedDatasets = lineChartData[unit].map(dataset => ({
             ...dataset,
@@ -105,11 +111,10 @@ $(document).ready(function () {
     });
 
     // 取得圖表資料
-    function getChartData(filename, type, unit, end) {
+    function getChartData(filename, type, unit) {
         let data = {
             filename: filename,
-            type: type,
-            end: end
+            type: type
         };
         $.ajax({
             url: '/api/get_chart_data',
@@ -159,9 +164,13 @@ $(document).ready(function () {
                         }
                         loading_rate = result.loading_rate;
 
+                        // 初始化圖表，顯示所有資料
                         initLineChart(lineChartData[unit], labels);
                         show_loading_rate_info(unit);
                         initParamsBlock();
+                        
+                        // 設定初始顯示範圍
+                        $('input[name=d-end]').val(INITIAL_DISPLAY_COUNT).trigger('change');
                     } else if(type === 'scatter'){
                         const colorMap = {
                             'COP(x)(m)_1': 'red',

@@ -57,7 +57,6 @@ def download_file(name):
 def get_chart_data():
     file_name = request.args.get('filename')
     chart_type = request.args.get('type')
-    end_index = int(request.args.get('end')) if request.args.get('end') else 600
     result = defaultdict(dict)
     result['loading_rate'] = []
     result['stability_index'] = []
@@ -66,7 +65,7 @@ def get_chart_data():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file_name}_{i}_processing.xlsx')
         if not os.path.exists(file_path):
             continue
-        df = pd.read_excel(file_path)[:end_index]
+        df = pd.read_excel(file_path)
         # 把每個column的資料轉成list
         data = {col: df[col].tolist() for col in df.columns}
         # 欄位名字後面加上_{i}，用於區分兩個測力板的資料

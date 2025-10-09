@@ -6,8 +6,16 @@ import numpy as np
 import pandas as pd
 import re
 from collections import defaultdict
+import os, sys
 
-UPLOAD_FOLDER = 'uploads'
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 ALLOWED_EXTENSIONS = {'txt', 'csv'}
 
 app = Flask(__name__)

@@ -239,8 +239,9 @@ def get_fz_keep_index(df):
     尾: 等於體重
     """
     fz_more_than_10_index = df[df.iloc[:, 2] >= 10]
-    # 找出第一筆Fz大於10的index
+    # 找出第一筆Fz大於10的index(如果start大於0就抓前面一筆)
     start = fz_more_than_10_index.index[0]
+    start = start - 1 if start > 0 else 0
     # 找出最後一筆Fz大於10的index
     end = fz_more_than_10_index.index[-1]
 
@@ -253,7 +254,7 @@ def get_fz_keep_index(df):
 
     # # 確保穩定狀態不在範圍之外
     # end = min(steady_state_index, end)
-    return start-1, end+1
+    return start, end+1
 
 def get_ellipse_data(df):
     """

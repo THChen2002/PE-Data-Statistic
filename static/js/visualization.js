@@ -5,6 +5,7 @@ $(document).ready(function () {
     let scatterChart;
     let lineChartData = {};
     let loading_rate = [];
+    let currentPlateCount = 1;  // 目前測力板數量
     const INITIAL_DISPLAY_COUNT = 1200;  // 初始顯示筆數
 
     // 檔案清單點擊事件
@@ -57,7 +58,7 @@ $(document).ready(function () {
         lineChart.data.datasets = datasets;
         lineChart.options.scales.y.title.text = `Force (${unit})`;
         lineChart.update();
-        initParamsBlock();
+        initParamsBlock(currentPlateCount);
         show_loading_rate_info(unit);
     });
 
@@ -107,7 +108,7 @@ $(document).ready(function () {
 
     // 新增區塊按鈕點擊事件
     $('#addBlockBtn').click(function () {
-        addParamsBlock();
+        addParamsBlock(currentPlateCount);
     });
 
     // 取得圖表資料
@@ -128,20 +129,32 @@ $(document).ready(function () {
                     if(type === 'line'){
                         // x軸的標籤(time)
                         const labels = data[Object.keys(data)[0]].map((_, i) => i + 1);
-                        const colorMap = {
-                            'Fx(N)_1': 'rgb(245, 170, 99)',
-                            'Fy(N)_1': 'rgb(242, 128, 153)',
-                            'Fz(N)_1': 'rgb(84, 170, 235)',
-                            'Fx(BW)_1': 'rgb(245, 170, 99)',
-                            'Fy(BW)_1': 'rgb(242, 128, 153)',
-                            'Fz(BW)_1': 'rgb(84, 170, 235)',
-                            'Fx(N)_2': 'rgb(220, 122, 20)',
-                            'Fy(N)_2': 'rgb(250, 54, 99)',
-                            'Fz(N)_2': 'rgb(10, 124, 205)',
-                            'Fx(BW)_2': 'rgb(220, 122, 20)',
-                            'Fy(BW)_2': 'rgb(250, 54, 99)',
-                            'Fz(BW)_2': 'rgb(10, 124, 205)'
-                        };
+                        const plateCount = result.plate_count || 1;
+                        
+                        // 動態生成顏色映射（每塊測力板使用不同顏色，只預留2塊）
+                        const plateColors = [
+                            { Fx: 'rgb(245, 170, 99)', Fy: 'rgb(242, 128, 153)', Fz: 'rgb(84, 170, 235)' },
+                            { Fx: 'rgb(220, 122, 20)', Fy: 'rgb(250, 54, 99)', Fz: 'rgb(10, 124, 205)' }
+                        ];
+                        
+                        const colorMap = {};
+                        const defaultVisibleKeys = []; // 第一塊測力板的資料預設顯示
+                        
+                        for (let i = 1; i <= plateCount; i++) {
+                            const colors = plateColors[(i - 1) % plateColors.length];
+                            colorMap[`Fx(N)_${i}`] = colors.Fx;
+                            colorMap[`Fy(N)_${i}`] = colors.Fy;
+                            colorMap[`Fz(N)_${i}`] = colors.Fz;
+                            colorMap[`Fx(BW)_${i}`] = colors.Fx;
+                            colorMap[`Fy(BW)_${i}`] = colors.Fy;
+                            colorMap[`Fz(BW)_${i}`] = colors.Fz;
+                            
+                            if (i === 1) {
+                                defaultVisibleKeys.push(`Fx(N)_${i}`, `Fy(N)_${i}`, `Fz(N)_${i}`, 
+                                                       `Fx(BW)_${i}`, `Fy(BW)_${i}`, `Fz(BW)_${i}`);
+                            }
+                        }
+                        
                         $.each(data, function (key, value) {
                             if (key in colorMap){
                                 let dataset = {
@@ -151,35 +164,48 @@ $(document).ready(function () {
                                     fill: false,
                                     borderColor: colorMap[key],
                                     tension: 0.1,
-                                    hidden: !['Fx(N)_1', 'Fy(N)_1', 'Fz(N)_1', 'Fx(BW)_1', 'Fy(BW)_1', 'Fz(BW)_1'].includes(key)
+                                    hidden: !defaultVisibleKeys.includes(key)
                                 };
                                 datasets.push(dataset);
                             }
                         });
 
-                        // 將資料分成N和BW兩個部分存入全域變數
+                        // 動態將資料分成N和BW兩個部分存入全域變數
+                        const nKeys = [];
+                        const bwKeys = [];
+                        for (let i = 1; i <= plateCount; i++) {
+                            nKeys.push(`Fx(N)_${i}`, `Fy(N)_${i}`, `Fz(N)_${i}`);
+                            bwKeys.push(`Fx(BW)_${i}`, `Fy(BW)_${i}`, `Fz(BW)_${i}`);
+                        }
+                        
                         lineChartData = {
-                            'N': datasets.filter(dataset => ['Fx(N)_1', 'Fy(N)_1', 'Fz(N)_1', 'Fx(N)_2', 'Fy(N)_2', 'Fz(N)_2'].includes(dataset.label)),
-                            'BW': datasets.filter(dataset => ['Fx(BW)_1', 'Fy(BW)_1', 'Fz(BW)_1', 'Fx(BW)_2', 'Fy(BW)_2', 'Fz(BW)_2'].includes(dataset.label))
+                            'N': datasets.filter(dataset => nKeys.includes(dataset.label)),
+                            'BW': datasets.filter(dataset => bwKeys.includes(dataset.label))
                         }
                         loading_rate = result.loading_rate;
-
+                        currentPlateCount = plateCount;
                         // 初始化圖表，顯示所有資料
                         initLineChart(lineChartData[unit], labels);
                         show_loading_rate_info(unit);
-                        initParamsBlock();
+                        initParamsBlock(plateCount);
                         
                         // 設定初始顯示範圍
                         $('input[name=d-end]').val(INITIAL_DISPLAY_COUNT).trigger('change');
                     } else if(type === 'scatter'){
-                        const colorMap = {
-                            'COP(x)(m)_1': 'red',
-                            // 'COP(y)(m)_1': 'red',
-                            'COP(x)(m)_2': 'blue',
-                            // 'COP(y)(m)_2': 'blue',
-                            'ellipse1': 'rgba(54, 162, 235, 0.3)',
-                            'ellipse2': 'rgba(255, 99, 132, 0.3)',
+                        const plateCount = result.plate_count || 1;
+                        
+                        // 動態生成顏色對應
+                        const scatterColors = ['red', 'blue'];
+                        const ellipseColors = [
+                            'rgba(54, 162, 235, 0.3)',
+                            'rgba(255, 99, 132, 0.3)'
+                        ];
+                        
+                        const colorMap = {};
+                        for (let i = 1; i <= plateCount; i++) {
+                            colorMap[`COP(x)(m)_${i}`] = scatterColors[(i - 1) % scatterColors.length];
                         }
+                        
                         $.each(data, function (key, value) {
                             const index = key.split('_')[1];
                             if (key in colorMap){
@@ -187,7 +213,7 @@ $(document).ready(function () {
                                     label: `測力板${index}`,
                                     data: value.map((_, i) => ({ x: data[`COP(x)(m)_${index}`][i], y: data[`COP(y)(m)_${index}`][i] })),
                                     showLine: false,
-                                    hidden: !['COP(x)(m)_1'].includes(key),
+                                    hidden: index !== '1', // 只顯示第一塊測力板
                                 };
                                 datasets.push(dataset);
                             }
@@ -201,8 +227,8 @@ $(document).ready(function () {
                                 yMin: value.yMin,
                                 yMax: value.yMax,
                                 rotation: value.rotation,   
-                                backgroundColor: colorMap[`ellipse${index+1}`],
-                                display: index+1 === 1
+                                backgroundColor: ellipseColors[index % ellipseColors.length],
+                                display: index === 0 // 只顯示第一個橢圓
                             };
                         });
                         
@@ -335,18 +361,24 @@ $(document).ready(function () {
     }
     
     // 初始化ParamsBlock區塊
-    function initParamsBlock() {
-        // 只留下第一個區塊
+    function initParamsBlock(plateCount) {
+        // 只留下第一個區塊作為模板，移除其他區塊
         $('.params-block').not(':first').remove();
-        addParamsBlock();
+        // 添加一個新的區塊
+        addParamsBlock(plateCount);
         $('#addBlockBtn').show();
     }
     
     // 新增ParamsBlock區塊(用display:none的當模板，複製後再顯示)
-    function addParamsBlock() {
-        let $newBlock = $('.params-block').first().clone();
+    function addParamsBlock(plateCount) {
+        let $template = $('.params-block').first();
+        let $newBlock = $template.clone();
         let newDatasetId = getNewDatasetId();
         $newBlock.find('.phase-title').text('Phase ' + newDatasetId);
+        // 如果只有1塊測力板，刪除第二塊的radio button
+        if (plateCount === 1) {
+            $newBlock.find('input[type=radio][value="2"]').closest('.form-check').remove();
+        }
         // 將radio button的name改成no-datasetId
         $newBlock.find('input[type=radio]').attr('name', `no-${newDatasetId}`);
         $newBlock.data('dataset-id', newDatasetId);
@@ -358,6 +390,9 @@ $(document).ready(function () {
     // 取得新的dataset id(目前最後一個的dataset id + 1)
     function getNewDatasetId() {
         let currentIds = $('.params-block').last().data('dataset-id');
+        if (currentIds === undefined || currentIds === null) {
+            return 0;
+        }
         return currentIds + 1;
     }
 

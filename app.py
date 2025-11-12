@@ -53,12 +53,15 @@ def download_file(name):
     zip_file_path = os.path.join(app.config['UPLOAD_FOLDER'], zip_file_name)
     with zipfile.ZipFile(zip_file_path, 'w') as zipf:
         for file in files:
-            # 一個檔案有兩個測力板
+            # 一個檔案可能有兩個測力板（12欄）或只有一個測力板（6欄）
             for i in range(1, 3):
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file}_{i}.xlsx')
-                zipf.write(file_path, arcname=os.path.basename(file_path))
                 processing_file_path = file_path.replace('.xlsx', '_processing.xlsx')
-                zipf.write(processing_file_path, arcname=os.path.basename(processing_file_path))
+                # 只添加存在的檔案
+                if os.path.exists(file_path):
+                    zipf.write(file_path, arcname=os.path.basename(file_path))
+                if os.path.exists(processing_file_path):
+                    zipf.write(processing_file_path, arcname=os.path.basename(processing_file_path))
     return send_file(zip_file_path, as_attachment=True)
 
 @app.route('/api/get_chart_data', methods=['GET'])
@@ -69,14 +72,18 @@ def get_chart_data():
     result['loading_rate'] = []
     result['stability_index'] = []
     result['ellipse'] = []
-    for i in range(1, 3):
+    result['plate_count'] = 0  # 測力板數量
+    
+    # 動態檢測測力板數量
+    i = 1
+    while i <= 10:
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file_name}_{i}_processing.xlsx')
         if not os.path.exists(file_path):
-            continue
+            break
         df = pd.read_excel(file_path)
         # 把每個column的資料轉成list
         data = {col: df[col].tolist() for col in df.columns}
-        # 欄位名字後面加上_{i}，用於區分兩個測力板的資料
+        # 欄位名字後面加上_{i}，用於區分測力板的資料
         data = {f'{col}_{i}': data[col] for col in data}
 
         if chart_type == 'line':
@@ -92,6 +99,9 @@ def get_chart_data():
             result['ellipse'].append(ellipse_data)
         else:
             result['data'].update(data)
+        
+        result['plate_count'] = i
+        i += 1
 
     return jsonify({'success': True, 'result': result})
 
@@ -103,11 +113,13 @@ def count_impulse():
     start_index = request.args.get('start')
     end_index = request.args.get('end')
     unit = request.args.get('unit')
-    if file_name and start_index and end_index:
+    if file_name and start_index and end_index and no:
         # index由小到大排序
         index = [int(end_index)-1, int(start_index)-1]
         index.sort()
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file_name}_{no}_processing.xlsx')
+        if not os.path.exists(file_path):
+            return jsonify({'success': False, 'message': f'測力板 {no} 的檔案不存在'})
         df = pd.read_excel(file_path)[:600]
         times = np.array(df.index/1200)
         Fz_values = np.array(df['Fz(N)']) if unit == 'N' else np.array(df['Fz(BW)'])
@@ -151,9 +163,16 @@ def txt_to_excel(file_path, items, weight):
         
         start, end = get_fz_keep_index(original_df)
         # 拆分資料為兩部分：前6欄和後6欄
+        num_cols = original_df.shape[1]
         df1 = original_df.iloc[:, :6]
-        df2 = original_df.iloc[:, 6:]
-        for i, df in enumerate([df1, df2]):
+        dataframes = [df1]
+        
+        # 如果有12欄，才處理第二塊測力板
+        if num_cols >= 12:
+            df2 = original_df.iloc[:, 6:12]
+            dataframes.append(df2)
+        
+        for i, df in enumerate(dataframes):
             df.columns = headers
             df.loc[:, ['Fx(BW)']] = df['Fx(N)'] / (N * weight)
             df.loc[:, ['Fy(BW)']] = df['Fy(N)'] / (N * weight)

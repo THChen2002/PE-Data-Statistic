@@ -120,7 +120,7 @@ def count_impulse():
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{file_name}_{no}_processing.xlsx')
         if not os.path.exists(file_path):
             return jsonify({'success': False, 'message': f'測力板 {no} 的檔案不存在'})
-        df = pd.read_excel(file_path)[:600]
+        df = pd.read_excel(file_path)
         times = np.array(df.index/1200)
         Fz_values = np.array(df['Fz(N)']) if unit == 'N' else np.array(df['Fz(BW)'])
         area = np.trapz(Fz_values[index[0]:index[1]+1], times[index[0]:index[1]+1])

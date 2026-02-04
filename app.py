@@ -5,6 +5,7 @@ import zipfile
 import numpy as np
 import pandas as pd
 import re
+import time
 from collections import defaultdict
 import os, sys
 
@@ -14,7 +15,9 @@ else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+TRIM_FOLDER = os.path.join(UPLOAD_FOLDER, 'trimmed')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(TRIM_FOLDER, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {'txt', 'csv'}
 
@@ -63,6 +66,70 @@ def download_file(name):
                 if os.path.exists(processing_file_path):
                     zipf.write(processing_file_path, arcname=os.path.basename(processing_file_path))
     return send_file(zip_file_path, as_attachment=True)
+
+
+@app.route('/trim_upload', methods=['POST'])
+def trim_upload():
+    """上傳 12 欄位 txt，刪除前 6 欄或後 6 欄後打包下載"""
+    files = request.files.getlist('files')
+    delete_block = request.form.get('delete_block')
+
+    if delete_block not in ['first', 'second']:
+        # 回傳 200，讓前端可以從 success callback 裡拿到 message
+        return jsonify({'success': False, 'message': '請選擇要刪除的區塊'})
+
+    trimmed_files = []
+    non_12_count = 0
+    non_12_files = []
+
+    for file in files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            # 先存到 TRIM_FOLDER
+            input_path = os.path.join(TRIM_FOLDER, filename)
+            file.save(input_path)
+
+            output_name, err = trim_txt_columns(input_path, delete_block)
+            if err == 'not_12':
+                non_12_count += 1
+                non_12_files.append(filename)
+            elif output_name:
+                trimmed_files.append(output_name)
+
+    if not trimmed_files:
+        # 如果全部都不是 12 欄，給明確提示
+        if non_12_count > 0:
+            return jsonify({
+                'success': False,
+                'message': '上傳的檔案欄位數不是 12 欄，請確認檔案格式（需含 12 欄資料）。',
+                'not_12_files': non_12_files
+            })
+        return jsonify({'success': False, 'message': '沒有可處理的檔案，請確認檔案格式是否正確'})
+
+    zip_file_name = f"trimmed_{int(time.time())}.zip"
+    zip_file_path = os.path.join(TRIM_FOLDER, zip_file_name)
+
+    with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+        for fname in trimmed_files:
+            fpath = os.path.join(TRIM_FOLDER, fname)
+            if os.path.exists(fpath):
+                zipf.write(fpath, arcname=fname)
+
+    return jsonify({
+        'success': True,
+        'zip_name': zip_file_name,
+        'skipped_not_12': non_12_count,
+        'not_12_files': non_12_files
+    })
+
+
+@app.route('/download_trim/<zip_name>', methods=['GET'])
+def download_trim(zip_name):
+    """下載刪除欄位後的壓縮檔"""
+    zip_path = os.path.join(TRIM_FOLDER, zip_name)
+    if not os.path.exists(zip_path):
+        return '檔案不存在', 404
+    return send_file(zip_path, as_attachment=True)
 
 @app.route('/api/get_chart_data', methods=['GET'])
 def get_chart_data():
@@ -186,6 +253,35 @@ def txt_to_excel(file_path, items, weight):
             # 儲存去頭尾資料的檔案
             df[start:end].to_excel(file_path.replace('.txt', f'_{i+1}_processing.xlsx'), index=False)
 
+
+def trim_txt_columns(file_path, delete_block):
+    """
+    將 12 欄位 txt 檔刪除前 6 欄或後 6 欄
+    delete_block: 'first' -> 刪除前 6 欄 (保留 7-12 欄)
+                  'second' -> 刪除後 6 欄 (保留 1-6 欄)
+    會在 TRIM_FOLDER 中產生新的 txt 檔，回傳輸出檔名
+    """
+    try:
+        df = pd.read_table(file_path, sep=',', header=None)
+    except Exception:
+        return None, 'read_error'
+
+    # 不是至少 12 欄就不處理
+    if df.shape[1] < 12:
+        return None, 'not_12'
+
+    if delete_block == 'first':
+        trimmed_df = df.iloc[:, 6:]
+    else:
+        trimmed_df = df.iloc[:, :6]
+
+    # 直接沿用原始檔名（覆寫 TRIM_FOLDER 中同名檔案）
+    out_name = os.path.basename(file_path)
+    output_path = os.path.join(TRIM_FOLDER, out_name)
+    trimmed_df.to_csv(output_path, header=False, index=False)
+
+    return out_name, None
+
 def count_COP(df):
     """
     計算COP
@@ -257,7 +353,6 @@ def count_stability_index(df):
     }
     return result
 
-# TODO: 去尾資料方式待確認
 def get_fz_keep_index(df):
     """Return
     Tuple: (start, end)
@@ -265,23 +360,23 @@ def get_fz_keep_index(df):
     頭: 第一筆Fz大於10N
     尾: 等於體重
     """
-    fz_more_than_10_index = df[df.iloc[:, 2] >= 10]
-    # 找出第一筆Fz大於10的index(如果start大於0就抓前面一筆)
-    start = fz_more_than_10_index.index[0]
-    start = start - 1 if start > 0 else 0
-    # 找出最後一筆Fz大於10的index
-    end = fz_more_than_10_index.index[-1]
+    # 依序檢查第1塊（第3欄）與第2塊（第9欄）是否有 Fz>=10
+    fz_col_candidates = [2]
+    if df.shape[1] >= 9:
+        fz_col_candidates.append(8)
 
-    # window = 50
-    # threshold = 0.1
-    # # 計算滾動平均以平滑資料並幫助識別穩定點
-    # rolling_mean = df['Fz(N)'][start:end].rolling(window=window).mean()
-    # # 找到力開始穩定的點，即滾動平均值的變化變得最小的地方
-    # steady_state_index = (rolling_mean.diff().abs() < threshold).idxmax()
+    for col_idx in fz_col_candidates:
+        fz_more_than_10_index = df[df.iloc[:, col_idx] >= 10]
+        if not fz_more_than_10_index.empty:
+            # 找出第一筆Fz大於10的index(如果start大於0就抓前面一筆)
+            start = fz_more_than_10_index.index[0]
+            start = start - 1 if start > 0 else 0
+            # 找出最後一筆Fz大於10的index
+            end = fz_more_than_10_index.index[-1]
+            return start, end+1
 
-    # # 確保穩定狀態不在範圍之外
-    # end = min(steady_state_index, end)
-    return start, end+1
+    # 都找不到時，不裁切，直接保留全段以避免 IndexError
+    return 0, len(df)
 
 def get_ellipse_data(df):
     """

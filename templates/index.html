@@ -2,7 +2,7 @@
 {% block title %}轉檔{% endblock %}
 {% block content %}
 <div style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
-    <form action="/upload" method="post" enctype="multipart/form-data">
+    <form id="convertForm" action="/upload" method="post" enctype="multipart/form-data">
         <h4 style="color: #4b4a4a; margin: 5px;">轉檔</h4>
         <div class="row" style="padding: 10px;">
             <div class="col-6">
@@ -39,6 +39,44 @@
             </div>
         </div>
     </form>     
+</div>
+
+<div style="background-color: #efefef; padding: 10px; margin: 10px;border-radius: 10px;">
+    <form id="trimForm" action="/trim_upload" method="post" enctype="multipart/form-data">
+        <h4 style="color: #4b4a4a; margin: 5px;">12欄位 txt 刪除測力板資料</h4>
+        <div class="row" style="padding: 10px;">
+            <div class="col-12" style="margin-bottom: 10px;">
+                <span><b>請選擇要刪除的區塊</b></span>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="delete_block" id="deleteFirst" value="first" checked>
+                    <label class="form-check-label" for="deleteFirst">
+                        刪除第一塊測力板（前六個欄位：1~6 欄）
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="delete_block" id="deleteSecond" value="second">
+                    <label class="form-check-label" for="deleteSecond">
+                        刪除第二塊測力板（後六個欄位：7~12 欄）
+                    </label>
+                </div>
+                <small class="text-muted">
+                    ※ 適用於原本為 12 欄位的 txt 檔案，處理後會只保留一塊測力板（6 欄位），並將結果打包為壓縮檔供下載。
+                </small>
+            </div>
+            <div class="col-6">
+                <label class="form-label"><b>上傳 12 欄位 .txt 文字檔</b><i class="bi bi-filetype-txt" style="margin-left: 5px;"></i></label>
+                <input class="form-control" type="file" name="files" multiple accept=".txt,.csv">
+            </div>
+            <div class="col-6" style="display: flex; align-items: end; justify-content: end; gap: 10px;">
+                <button id="trimSubmitBtn" class="btn btn-outline-success btn-rounded" type="submit">刪除並打包</button>
+                <button id="trimLoadBtn" class="btn btn-outline-success btn-rounded" type="button" style="display: none;" disabled>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="vertical-align: baseline;"></span>
+                    處理中...
+                </button> 
+                <button id="trimDownloadBtn" class="btn btn-outline-primary btn-rounded" type="button" style="display: none;">下載處理後壓縮檔</button>
+            </div>
+        </div>
+    </form>
 </div>
 {% endblock %}
 

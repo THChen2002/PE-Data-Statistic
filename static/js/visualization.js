@@ -14,8 +14,9 @@ $(document).ready(function () {
         $(this).addClass('active');
         let filename = $(this).text();
         let unit = $('input[name=unit]:checked').val().toUpperCase();
+        // scatter不在這裡請求，line載入完成後會初始化d-end並觸發change，
+        // 由change事件依d-end範圍請求scatter(穩定平衡指數)
         getChartData(filename, 'line', unit);
-        getChartData(filename, 'scatter', unit);
     });
 
     // 最後一筆索引改變事件
@@ -25,6 +26,11 @@ $(document).ready(function () {
     
         if (isNaN(end) || end <= 0) {
             alert("請輸入有效的數字");
+            return;
+        }
+
+        // 尚未選擇檔案(資料未載入)時不處理
+        if (!lineChartData[unit] || lineChartData[unit].length === 0) {
             return;
         }
 
@@ -49,6 +55,12 @@ $(document).ready(function () {
         lineChart.data.labels = updatedLabels;
         lineChart.data.datasets = updatedDatasets;
         lineChart.update();
+
+        // 穩定平衡指數依相同範圍重新計算
+        let filename = $('#fileList button.active').text();
+        if (filename) {
+            getChartData(filename, 'scatter', unit, end);
+        }
     });
 
     // 單位轉換事件
@@ -112,11 +124,14 @@ $(document).ready(function () {
     });
 
     // 取得圖表資料
-    function getChartData(filename, type, unit) {
+    function getChartData(filename, type, unit, end) {
         let data = {
             filename: filename,
             type: type
         };
+        if (end) {
+            data.end = end;
+        }
         $.ajax({
             url: '/api/get_chart_data',
             type: 'get',

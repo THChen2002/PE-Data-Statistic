@@ -135,6 +135,8 @@ def download_trim(zip_name):
 def get_chart_data():
     file_name = request.args.get('filename')
     chart_type = request.args.get('type')
+    # 可選參數: 只取前end筆資料計算(用於穩定平衡指數依使用者輸入範圍重算)
+    end_index = request.args.get('end', type=int)
     result = defaultdict(dict)
     result['loading_rate'] = []
     result['stability_index'] = []
@@ -148,6 +150,8 @@ def get_chart_data():
         if not os.path.exists(file_path):
             break
         df = pd.read_excel(file_path)
+        if end_index:
+            df = df[:end_index]
         # 把每個column的資料轉成list
         data = {col: df[col].tolist() for col in df.columns}
         # 欄位名字後面加上_{i}，用於區分測力板的資料
@@ -427,4 +431,4 @@ def get_ellipse_data(df):
     return ellipse_params
 
 if __name__ == '__main__':
-    app.run()
+    app.run(port=5001)

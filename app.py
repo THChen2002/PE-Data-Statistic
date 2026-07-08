@@ -349,7 +349,7 @@ def count_stability_index(df):
         'APSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2) / len(df)) / weight, 2),
         'MLSI': round(np.sqrt(np.sum((0 - df['Fy(N)'])**2) / len(df)) / weight, 2),
         'VSI': round(np.sqrt(np.sum((weight - df['Fz(N)'])**2) / len(df)) / weight, 2),
-        'DPSI': round(np.sqrt(np.sum((0 - df['Fx(N)'])**2) + np.sum((0 - df['Fy(N)'])**2) + np.sum((weight - df['Fz(N)'])**2) / len(df)) / weight, 2)
+        'DPSI': round(np.sqrt((np.sum((0 - df['Fx(N)'])**2) + np.sum((0 - df['Fy(N)'])**2) + np.sum((weight - df['Fz(N)'])**2)) / len(df)) / weight, 2)
     }
     return result
 
